@@ -1,0 +1,217 @@
+h1, h2, h3, h4, h5, h6 {
+    font-family: Arial Black, Gadget, sans-serif;
+    margin-block-end: 0.2em;
+}
+
+.hidden {
+    display: none;
+}
+
+#config {
+    height: 100vh;
+    overflow-y: scroll;
+    justify-self: center;
+    padding-bottom: 20vh;
+    margin-bottom: 20vh;
+    margin-left: 4em;
+    max-width: 100vw;
+}
+
+body {
+    margin: 0;
+    overflow: hidden;
+}
+
+#game {
+    width: calc(50vw - 5vh);
+    height: 90vh;
+    padding-left: 5vh;
+    padding-top: 5vh;
+    padding-bottom: 5vh;
+    float: left;
+}
+
+#info {
+    width: calc(50vw - 10vh);
+    height: 90vh;
+    margin: 5vh;
+    float: right;
+    overflow-y: scroll;
+}
+
+@media (max-aspect-ratio: 4/5) {
+    body {
+        margin: 0;
+        overflow: scroll;
+    }
+
+    #game {
+        width: 90vw;
+        height: auto;
+        padding-right: 5vw;
+        padding-left: 5vw;
+        padding-top: 5vw;
+        padding-bottom: 5vw;
+        float: none;
+    }
+
+    #info {
+        width: 90vw;
+        height: auto;
+        margin: 5vw;
+        margin-top: 0;
+        float: none;
+    }
+}
+
+canvas {
+    image-rendering: pixelated;
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+}
+
+#config-factions {
+    margin-bottom: 30px;
+}
+
+#config-run-button {
+    background-color: rgb(40, 157, 40);
+    color: white;
+}
+
+#config-run-button:hover {
+    background-color: rgb(34, 133, 34);
+}
+
+#config-filler {
+    height: 20em;
+}
+
+.faction-cell {
+    height: 50px;
+    border-bottom: solid white 10px;
+    border-spacing: 20px;
+}
+
+.faction-color {
+    opacity: 0;
+    min-width: 65px;
+    min-height: 100%;
+    padding: 0;
+}
+
+.faction-name {
+    height: 100%;
+    min-width: 30em;
+    background-color: white;
+    border: 0;
+    border-left: solid lightgray 2px;
+    border-right: solid lightgray 2px;
+    padding-left: 12px;
+    margin-left: 12px;
+    margin-right: 12px;
+}
+
+.faction-delete {
+    background-color: rgb(184, 32, 32);
+    color: white;
+}
+
+#faction-add {
+    background-color: rgb(15, 86, 173);
+    color: white;
+}
+
+.faction-button {
+    height: 50px;
+    width: 100%;
+}
+
+td.small {
+    height: auto;
+}
+
+td.smaller {
+    height: 20px;
+}
+
+.info-counts {
+    display: flex;
+}
+
+.info-count {
+    padding-right: 5px;
+    margin-right: 15px;
+    margin-bottom: 10px;
+    border-right: solid lightgray 2px;
+}
+.info-count:not(.hidden) {
+    display: inline-block;
+}
+
+.info-event {
+    border-top: solid lightgray 2px;
+    width: 75%;
+    padding-bottom: 8px;
+    padding-top: 8px;
+}
+
+td.info-color {
+    width: 65px;
+    min-width: 65px;
+    margin-right: 10px;
+    padding: 0;
+}
+
+td.info-name {
+    font-weight: bold;
+    padding-left: 5px;
+    padding-right: 10px;
+    overflow-wrap: anywhere;
+}
+
+td.info-text {
+    padding-left: 5px;
+}
+
+td.info-timestamp {
+    font-style: italic;
+    text-align: right;
+    padding-right: 10px;
+    color: gray;
+}
+
+#info-stats {
+    width: 80%;
+}
+
+.info-stat {
+    height: auto;
+    width: 50%;
+    padding-bottom: 5px;
+}
+
+.bold {
+    font-weight: bold;
+}
+
+button {
+    padding-right: 10px;
+    padding-left: 10px;
+    background-color: white;
+    border: solid gray 2px ;
+}
+
+button:hover {
+    cursor: pointer;
+    background-color: lightgray;
+}
+
+input[type="color"] {
+    background-color: white;
+}
+
+input[type="color"]:hover {
+    cursor: pointer;
+}

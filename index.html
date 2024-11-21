@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html lang="en">
+	<head>
+		<title>PIXELS FIGHTING</title>
+		<meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+		<link rel="stylesheet" type="text/css" href="style.css">
+	</head>
+
+	<body>
+        <!-- Game configuration -->
+        <div id="config" class="hidden">
+            <h1>Pixels Fighting! setup</h1>
+            <i>v3.2.1</i>
+
+            <h3>Canvas size:</h3>
+            <select id="config-width" value="128">
+                <option id="config-width-32" value="32">32 x 32</option>
+                <option id="config-width-64" value="64">64 x 64</option>
+                <option id="config-width-128" value="128">128 x 128</option>
+                <option id="config-width-256" value="256">256 x 256</option>
+                <option id="config-width-512" value="512">512 x 512</option>
+                <option id="config-width-1024" value="1024">1024 x 1024</option>
+                <option id="config-width-2048" value="2048">2048 x 2048</option>
+            </select>
+            <br>
+
+            <h3>Execution mode:</h3>
+            <select id="config-mode" value="gpu">
+                <option value="cpu">JavaScript</option>
+                <option value="wasm">WebAssembly</option>
+                <option value="gl" disabled>WebGL</option>
+                <option value="gpu" id="config-mode-webgpu">WebGPU</option>
+            </select>
+            <br>
+
+            <h3>Factions:</h3>
+            <table id="config-factions">
+                <thead>
+                    <tr>
+                        <th>Color</th>
+                        <th>Name</th>
+                        <th></th>
+                    </tr>
+                    <tr id="faction-template" class="faction-entry hidden">
+                        <td class="color-picker faction-cell">
+                            <input type="color" class="faction-color" name="faction color">
+                        </td>
+                        <td class="faction-cell">
+                            <input type="text" class="faction-name" placeholder="Enter name here..." name="faction name">
+                        </td>
+                        <td class="faction-cell">
+                            <button class="faction-button faction-delete" name="delete faction">
+                                Remove
+                            </button>
+                        </td>
+                    </tr>
+                </thead>
+                <tbody id="faction-container"></tbody>
+                <tfoot>
+                    <tr>
+                        <td colspan="3">
+                            <button id="faction-add" class="faction-button">
+                                Add faction
+                            </button>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td colspan="3">
+                            <button id="config-run-button" class="faction-button">Run</button>
+                        </td>
+                    </tr>
+                </tfoot>
+            </table>
+            <div id="config-filler"></div>
+        </div>
+        
+        <!-- Game itself will go here -->
+        <div id="main" class="hidden">
+            <div id="game"></div>
+            <div id="info">
+                <h1>Statistics</h1>
+                <table id="info-stats">
+                    <tr>
+                        <td class="info-stat">
+                            <span class="bold">Iterations passed:</span>
+                            <span id="info-iterations"></span>
+                        </td>
+                        <td class="info-stat">
+                            <span class="bold">Game started: </span>
+                            <span id="info-game-started"></span>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td class="info-stat">
+                            <span class="bold">Factions alive:</span>
+                            <span id="info-alive"></span>
+                        </td>
+                        <td class="info-stat">
+                            <span class="bold">Factions at start:</span>
+                            <span id="info-factions-started"></span>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td class="info-stat">
+                            <span class="bold">Current lead:</span>
+                            <span id="info-lead"></span>
+                        </td>
+                        <td class="info-stat">
+                            <span class="bold">Total pixels:</span>
+                            <span id="info-total-pixels"></span>
+                        </td>
+                    </tr>
+                </table>
+
+                <h1>Current scores</h1>
+                <div id="info-counts">
+                    <table id="info-count-template" class="info-count hidden">
+                        <tr>
+                            <td class="smaller info-color" rowspan="2" style="background-color: aqua;"></td>
+                            <td class="smaller info-name"></td>
+                        </tr>
+                        <tr>
+                            <td class="small info-text"></td>
+                        </tr>
+                    </table>
+                </div>
+
+                <h1>Game events</h1>
+                <div id="info-events">
+                    <table id="info-event-template" class="info-event hidden">
+                        <tr>
+                            <td class="smaller info-color" rowspan="2" style="background-color: aqua;"></td>
+                            <td class="smaller info-name"></td>
+                            <td class="smaller info-timestamp"></td>
+                        </tr>
+                        <tr>
+                            <td class="small info-text" colspan="2"></td>
+                        </tr>
+                    </table>
+                </div>
+            </div>
+        </div>
+	</body>
+
+    <script type="module" src="./main.js"></script>
+</html>
