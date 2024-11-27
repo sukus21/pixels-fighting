@@ -13,9 +13,15 @@ else {
     document.getElementById("config-mode").value = "gpu";
 }
 
-// Template cloner
+/**
+ * Template cloner
+ * @param {string} templateId
+ * @returns {HTMLElement}
+ */
 function templateCreate(templateId) {
-    const element = document.getElementById(templateId).cloneNode(true);
+    const element = document.getElementById(templateId);
+    if (!element) throw new Error("could not find element " + templateId);
+    element.remove();
     element.removeAttribute("id");
     element.classList.remove("hidden");
     return element;
