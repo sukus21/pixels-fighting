@@ -1,7 +1,8 @@
 // @ts-check
 
 import Faction from "./faction.js";
-import {factionList, makeColor} from "./faction.js";
+import { makeColor } from "./faction.js";
+import { templateCreate } from "./utils.js";
 
 // Disable WebGPU in unsupported browsers
 const webGpuSupported = Boolean(navigator?.gpu);
@@ -11,20 +12,6 @@ if(!webGpuSupported) {
 } 
 else {
     document.getElementById("config-mode").value = "gpu";
-}
-
-/**
- * Template cloner
- * @param {string} templateId
- * @returns {HTMLElement}
- */
-function templateCreate(templateId) {
-    const element = document.getElementById(templateId);
-    if (!element) throw new Error("could not find element " + templateId);
-    element.remove();
-    element.removeAttribute("id");
-    element.classList.remove("hidden");
-    return element;
 }
 
 // Grab different containers
