@@ -2,10 +2,11 @@
 
 import Faction from "./faction.js";
 import { makeColor } from "./faction.js";
+import GameSettings from "./game_settings.js";
 import { templateCreate } from "./utils.js";
 
 // Disable WebGPU in unsupported browsers
-const webGpuSupported = Boolean(navigator?.gpu);
+const webGpuSupported = Boolean(navigator.gpu?.requestAdapter);
 if(!webGpuSupported) {
     document.getElementById("config-mode-webgpu").disabled = true;
     document.getElementById("config-mode").value = "cpu";
@@ -31,139 +32,6 @@ const statsTotalPixels = document.getElementById("info-total-pixels");
 // Various templates
 const templateCount = templateCreate("info-count-template");
 const templateEvent = templateCreate("info-event-template");
-const templateFaction = templateCreate("faction-template");
-
-// Faction shenanigans
-const factionEntries = document.getElementById("faction-container");
-const factionAdd = document.getElementById("faction-add");
-
-// Add faction function
-function addFaction(name = "", color = null) {
-    const newFaction = templateFaction.cloneNode(true);
-    const deleteButton = newFaction.querySelector(".faction-delete");
-    deleteButton.addEventListener("click", function() {
-        factionEntries.removeChild(newFaction);
-    });
-    const colorSquare = newFaction.querySelector(".color-picker");
-    const colorPicker = newFaction.querySelector(".faction-color");
-    const newColor = makeColor(color);
-    colorPicker.value = newColor;
-    colorSquare.style.backgroundColor = newColor;
-    colorPicker.addEventListener("change", function(e) {
-        colorSquare.style.backgroundColor = colorPicker.value;
-    });
-    const nameLabel = newFaction.querySelector(".faction-name");
-    nameLabel.value = name;
-    factionEntries.appendChild(newFaction);
-}
-
-// Add faction button
-factionAdd.addEventListener("click", function() {
-    addFaction();
-});
-
-class GameSettings {
-    constructor() {
-        this.width = 128;
-        this.height = 128;
-        this.factions = [
-            {name: "", color: Math.floor(Math.random() * 0x00FF_FFFF)},
-            {name: "", color: Math.floor(Math.random() * 0x00FF_FFFF)},
-        ];
-        this.mode = "gpu";
-        this.play = true;
-
-        const urlSearchParams = new URLSearchParams(window.location.search);
-        this.load(urlSearchParams);
-    }
-
-    // Load state of query into this
-    load(query) {
-        let options = {};
-        query.forEach(function(value, key) {
-            if(options[key] !== undefined) {
-                if(typeof options[key] !== "object") {
-                    options[key] = [options[key]];
-                }
-                options[key].push(value);
-            }
-            else {
-                options[key] = value;
-            }
-        });
-
-        function getSingleValue(key) {
-            if(!options[key]) return undefined;
-            if(typeof options[key] === "object") return options[key][0];
-            return options[key];
-        }
-
-        function getMultiValue(key) {
-            if(!options[key]) return [];
-            if(typeof options[key] !== "object") return [options[key]];
-            return options[key];
-        }
-
-        this.width = Number(getSingleValue("w") ?? this.width);
-        this.height = Number(getSingleValue("h") ?? this.width);
-        this.mode = String(getSingleValue("m") ?? this.mode);
-        this.play = Boolean(options["p"] !== undefined ?? this.play);
-
-        const names = getMultiValue("fn");
-        const colors = getMultiValue("fc");
-        
-        if(Math.min(names.length, colors.length) !== 0) {
-            this.factions = [];
-            for(let i = 0; i < names.length && i < colors.length; i++) {
-                this.factions.push({
-                    name: names[i],
-                    color: Number(colors[i]),
-                });
-            }
-        }
-    }
-
-    // Save state of this to url
-    createUrl(playing = false) {
-        let url = "w=" + this.width;
-        url += "&m=" + this.mode;
-        if(playing) url += "&p";
-        this.factions.forEach(function(faction) {
-            url += "&fn=" + faction.name || " ";
-            url += "&fc=" + String(faction.color);
-        });
-        return url;
-    }
-
-    // Get state of inputs and apply to this
-    apply() {
-        let factions = Array(factionEntries.childElementCount);
-        factionEntries.childNodes.forEach(function(v, i) {
-            let colorStr = v.querySelector(".faction-color").value;
-            let color = parseInt(colorStr.replace("#", ""), 16);
-            let name = v.querySelector(".faction-name").value;
-            factions[i] = {
-                name: name,
-                color: color,
-            };
-        });
-
-        this.width = Number(document.getElementById("config-width").value);
-        this.height = this.width;
-        this.mode = document.getElementById("config-mode").value;
-        this.factions = factions;
-    }
-
-    // Apply state of this to inputs
-    store() {
-        document.getElementById("config-width").value = this.width;
-        document.getElementById("config-mode").value = this.mode;
-        factionEntries.innerHTML = "";
-        this.factions.forEach(function(v) {
-            addFaction(v.name, v.color);
-        });
-    }
-}
 
 // Settings loading
 const settings = new GameSettings();
