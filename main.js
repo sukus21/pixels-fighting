@@ -311,6 +311,16 @@ class GameRunner {
             `Some say that a full life takes exactly ${iterations+1} iterations to live. Too bad ${name} only lived to ${iterations} iterations.`,
             `It only took ${iterations} iterations, but ${name} is no longer an endangered species! Now it is just dead.`,
             `${name} was not the impostor. ${this.alive} remaining after ${iterations} iterations.`,
+            `${name} was offered a better job at Microsoft, and left on day ${iterations}.`,
+            `Did you know? More people are killed by vending machines each year than sharks! That's not what happened to ${name}, though; they just died at ${iterations}`,
+            `At iterations ${iterations-1}, ${name} showed a photo of its little daughter. It said it wanted to retire at iteration ${iterations + 1}. It died at ${iterations}`,
+            `"That autopsy report is outdated. A second autopsy was performed at my request. "${name} died at ${iterations}". I received the results this morning.".`,
+            `${name} has reached divinity. According to Nietzsche, it died at ${iterations}.`,
+            `${name} completed its Club Penguin banned% speedrun at a world record ${iterations}!`,
+            `At ${iterations}, ${name} went to a place far away.`,
+            `Long live ${name}! Long live ${name}! (long = ${iterations}).`,
+            `${name} didn't lose the ${iterations}th iteration! It merely failed to win!`,
+            `${name} tried to swim in lava at ${iterations}.`,
         ];
         
         let result = strings[Math.floor(Math.random() * strings.length)];
