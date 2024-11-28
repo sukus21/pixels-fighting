@@ -13,8 +13,8 @@ type PixelWasmExports = {
     step: () => void;
 };
 
-const wasmResponse = fetch('./pixels.wasm');
-const wasmModule = await WebAssembly.compileStreaming(wasmResponse);
+const wasmResponse = await fetch('./pixels.wasm');
+const wasmModule = await WebAssembly.compile(await wasmResponse.arrayBuffer());
 
 export default class PixelFightWASM implements PixelFight {
     canvas: HTMLCanvasElement;
@@ -29,7 +29,8 @@ export default class PixelFightWASM implements PixelFight {
     constructor(
         private readonly factions: Faction[],
         width: number,
-        height: number,) {
+        height: number,
+    ) {
 
         // Create canvas
         this.canvas = document.createElement("canvas");

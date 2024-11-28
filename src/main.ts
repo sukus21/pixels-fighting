@@ -113,7 +113,7 @@ class GameSettings {
         this.width = Number(getSingleValue("w") ?? this.width);
         this.height = Number(getSingleValue("h") ?? this.width);
         this.mode = String(getSingleValue("m") ?? this.mode);
-        this.play = Boolean(options["p"] ?? this.play);
+        this.play = "p" in options;
 
         const names = getMultiValue("fn");
         const colors = getMultiValue("fc");
@@ -122,7 +122,7 @@ class GameSettings {
         if (numFactions !== 0) {
             this.factions = new Array(numFactions);
             for (let i = 0; i < numFactions; i++) {
-                this.factions.push(new Faction(names[i], Number(colors[i])));
+                this.factions[i] = new Faction(names[i], Number(colors[i]));
             }
         }
     }
@@ -134,7 +134,7 @@ class GameSettings {
         if(playing) url += "&p";
         this.factions.forEach((faction) => {
             url += "&fn=" + faction.name || " ";
-            url += "&fc=" + faction.color.toString();
+            url += "&fc=" + faction.rgb.toString();
         });
         return url;
     }
@@ -390,7 +390,7 @@ async function run(settings: GameSettings) {
 
     // Set names for factions missing names
     settings.factions.forEach((faction) => {
-        faction.name ??= makeColor(faction.rgb);
+        faction.name ||= makeColor(faction.rgb);
     });
 
     const gpuFight = new constructor(settings.factions, settings.width, settings.height);
