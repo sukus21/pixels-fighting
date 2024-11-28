@@ -1,37 +1,28 @@
 // @ts-check
 
+/**
+ * @import { PixelFight, PixelGameData } from "./@types/pixelfight";
+ */
+
 import Faction from "./faction.js";
 
+/**
+ * @implements {PixelFight}
+ */
 export default class PixelFightCPU {
-    /**
-     * @type {number[][]}
-     */
-    bufferA;
+    /** @type {Uint32Array[]} */ bufferA;
+    /** @type {Uint32Array[]} */ bufferB;
+    /** @type {0|1} */ useBuffer = 0;
+    /** @type {[Uint32Array[], Uint32Array[]]} */ buffers;
+    /** @type {BigUint64Array} */ count;
+    /** @type {bigint} */ iterations = 0n;
 
-    /**
-     * @type {number[][]}
-     */
-    bufferB;
+    /** @type {HTMLCanvasElement} */ canvas;
+    /** @type {CanvasRenderingContext2D} */ context;
 
-    /**
-     * @type {0|1}
-     */
-    useBuffer = 0;
-
-    /**
-     * @type {[number[][], number[][]]}
-     */
-    buffers;
-
-    /**
-     * @type {number[]}
-     */
-    count;
-
-    /**
-     * @type {number}
-     */
-    iterations = 0;
+    /** @type {Faction[]} */ factions;
+    /** @type {number} */ width;
+    /** @type {number} */ height;
 
     /**
      * @param {Faction[]} factions
@@ -39,38 +30,39 @@ export default class PixelFightCPU {
      * @param {number} height
      */
     constructor(factions, width, height) {
+        this.factions = factions;
         this.width = width;
         this.height = height;
-        this.factions = factions;
-        this.iterations = 0;
 
         this.canvas = document.createElement("canvas");
         this.canvas.width = this.width;
         this.canvas.height = this.height;
-        this.context = this.canvas.getContext("2d");
-        if (!this.context) {
-            throw new Error("browser does not support CanvasRenderingContext2D");
-        }
+        const ctx = this.canvas.getContext("2d");
+        if (!ctx) throw new Error("CanvasContext2D not supported");
+        this.context = ctx;
 
-        this.reset();
-    }
-
-    reset() {
-        this.iterations = 0;
-        this.useBuffer = 0;
         this.bufferA = new Array(this.width);
         this.bufferB = new Array(this.width);
         this.buffers = [this.bufferA, this.bufferB];
-        this.count = new Array(this.factions.length);
-        for (let i = 0; i < this.factions.length; i++) {
-            this.count[i] = 0;
+        for (let i = 0; i < this.height; i++) {
+            this.bufferA[i] = new Uint32Array(this.width);
+            this.bufferB[i] = new Uint32Array(this.height);
         }
 
-        for (let i = 0; i < this.width; i++) {
-            this.bufferA[i] = new Array(this.height);
-            this.bufferB[i] = new Array(this.height);
+        this.count = new BigUint64Array(this.factions.length);
+        this.reset();
+    }
 
-            //Evenly distrubute pixels to each side
+    /**
+     * @returns {void}
+     */
+    reset() {
+        this.iterations = 0n;
+        this.useBuffer = 0;
+        this.count.fill(0n, 0, this.factions.length);
+
+        // "Evenly" distrubute pixels to each side
+        for (let i = 0; i < this.width; i++) {
             for (let j = 0; j < this.height; j++) {
                 let angle = Math.atan2(this.width/2 - i - 0.5, this.height/2 - j - 0.5) * 180 / Math.PI;
                 while (angle < 0) angle += 360;
@@ -84,6 +76,9 @@ export default class PixelFightCPU {
         this.draw();
     }
 
+    /**
+     * @returns {void}
+     */
     step() {
         this.iterations++;
         
@@ -126,12 +121,15 @@ export default class PixelFightCPU {
         this.draw();
     }
 
+    /**
+     * @returns {void}
+     */
     draw() {
         const gameBuffer = this.buffers[this.useBuffer];
         const drawBuffer = this.context.createImageData(this.width, this.height);
         for (let i = 0; i < this.width; i++) {
             for (let j = 0; j < this.height; j++) {
-                let color = this.factions[gameBuffer[i][j]].colorRGB;
+                let color = this.factions[gameBuffer[i][j]].rgb;
                 let d = (i + j * this.width) * 4;
                 drawBuffer.data[d+0] = color >> 16;
                 drawBuffer.data[d+1] = (color >> 8) & 255;
@@ -142,10 +140,16 @@ export default class PixelFightCPU {
         this.context.putImageData(drawBuffer, 0, 0);
     }
 
+    /**
+     * @returns {HTMLCanvasElement}
+     */
     getCanvas() {
         return this.canvas;
     }
 
+    /**
+     * @returns {PixelGameData}
+     */
     getGameData() {
         return {
             iterations: this.iterations,

@@ -1,7 +1,6 @@
 // @ts-check
 
 /**
- * Template cloner
  * @param {string} templateId
  * @returns {HTMLElement}
  */

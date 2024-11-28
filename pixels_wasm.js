@@ -1,60 +1,29 @@
 // @ts-check
 
 /**
- * @typedef {Object} PixelWasmExports
- * @property {function(number, number, number): void} init
- * @property {function(): void} reset
- * @property {function(): void} draw
- * @property {function(): void} step
- * @property {function(number, number): void} factionColor
- * @property {WebAssembly.Memory} memory
- * @property {function(): bigint} getIterations
- * @property {function(number): bigint} getFactionCount
+ * @import { PixelFight, PixelGameData } from "./@types/pixelfight";
+ * @import { PixelWasmExports } from "./@types/wasm_export";
  */
 
 import Faction from "./faction.js";
 
-const wasmResponse = fetch('./pixels.wasm');
-const wasmModule = await WebAssembly.compileStreaming(wasmResponse);
+const wasmResponse = await fetch('./pixels.wasm');
+const wasmModule = await WebAssembly.compile(await wasmResponse.arrayBuffer());
 
+/**
+ * @implements {PixelFight}
+ */
 export default class PixelFightWASM {
-    /**
-     * @type {HTMLCanvasElement}
-     */
-    canvas;
+    /** @type {Faction[]} */ factions;
+    
+    /** @type {HTMLCanvasElement} */ canvas;
+    /** @type {CanvasRenderingContext2D} */ context;
+    /** @type {PixelWasmExports} */ instance;
+    /** @type {ArrayBuffer} */ memory;
 
-    /**
-     * @type {CanvasRenderingContext2D}
-     */
-    context;
-
-    /**
-     * @type {Faction[]}
-     */
-    factions;
-
-    /**
-     * @type {PixelWasmExports}
-     */
-    instance;
-
-    /**
-     * @readonly
-     * @type {function(): void}
-     */
-    reset;
-
-    /**
-     * @readonly
-     * @type {function(): void}
-     */
-    draw;
-
-    /**
-     * @readonly
-     * @type {function(): void}
-     */
-    step;
+    /** @type {() => void} */ reset;
+    /** @type {() => void} */ draw;
+    /** @type {() => void} */ step;
 
     /**
      * @param {Faction[]} factions
@@ -62,40 +31,39 @@ export default class PixelFightWASM {
      * @param {number} height
      */
     constructor(factions, width, height) {
+        this.factions = factions;
 
         // Create canvas
         this.canvas = document.createElement("canvas");
         this.canvas.width = width;
         this.canvas.height = height;
         const ctx = this.canvas.getContext("2d");
-        if (!ctx) {
-            throw new Error("browser does not support CanvasRenderingContext2D");
-        }
+        if (!ctx) throw new Error("CanvasContext2D not available");
         this.context = ctx;
-        this.factions = factions;
 
         // Create WASM instance
         const image = new ImageData(width, height);
         const instance = new WebAssembly.Instance(wasmModule, {
             deps: {
                 atan2: Math.atan2,
+                getRngSeed: () => Math.random() * 0x00FF_FFFF,
+                /**
+                 * @param {number} start
+                 * @param {number} end
+                 */
                 updatePixels: (start, end) => {
-                    image.data.set(new Uint8Array(this.memory.slice(start, end)));
+                    image.data.set(new Uint8Array(this.memory).subarray(start, end));
                     this.context.putImageData(image, 0, 0);
-                },
-                getRngSeed: () => {
-                    return Math.random() * 0x00FF_FFFF;
                 },
             },
         });
 
         // Initialize WASM runner
-        // @ts-ignore
-        this.instance = instance.exports;
+        this.instance = /** @type {PixelWasmExports} */ (instance.exports);
         this.instance.init(width, height, factions.length);
         this.memory = this.instance.memory.buffer;
-        for(let i = 0; i < factions.length; i++) {
-            this.instance.factionColor(i, factions[i].colorRGB);
+        for (let i = 0; i < factions.length; i++) {
+            this.instance.factionColor(i, factions[i].rgb);
         }
 
         // Point fight interface to WASM instance
@@ -107,17 +75,23 @@ export default class PixelFightWASM {
         this.reset();
     }
 
+    /**
+     * @returns {HTMLCanvasElement}
+     */
     getCanvas() {
         return this.canvas;
     }
 
+    /**
+     * @returns {PixelGameData}
+     */
     getGameData() {
-        let counts = new Array(this.factions.length);
-        for(let i = 0; i < this.factions.length; i++) {
-            counts[i] = Number(this.instance.getFactionCount(i));
+        const counts = new BigUint64Array(this.factions.length);
+        for (let i = 0; i < this.factions.length; i++) {
+            counts[i] = this.instance.getFactionCount(i);
         }
         return {
-            iterations: Number(this.instance.getIterations()),
+            iterations: this.instance.getIterations(),
             factions: this.factions,
             counts: counts,
         };

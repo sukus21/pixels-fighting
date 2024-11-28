@@ -1,5 +1,10 @@
 // @ts-check
 
+/**
+ * @import { PixelFight, PixelGameData } from "./@types/pixelfight";
+ * @import { WebGPU } from "./@types/webgpu_elements";
+ */
+
 import Faction from "./faction.js";
 
 const GPUshaderSourceCompute = /* wgsl */ `
@@ -161,9 +166,9 @@ const GPUshaderSourceFragment = /* wgsl */ `
     }
 `;
 
-const GPUadapter = await navigator.gpu?.requestAdapter();
+const GPUadapter = await navigator.gpu.requestAdapter();
 const GPUdevice = await GPUadapter?.requestDevice();
-const GPUpresentationFormat = navigator?.gpu?.getPreferredCanvasFormat();
+const GPUpresentationFormat = navigator.gpu.getPreferredCanvasFormat();
 
 /**
  * @param {number} binding
@@ -179,11 +184,24 @@ function createBufferBinding(binding, visibility, bufferType) {
     };
 }
 
+/**
+ * @implements {PixelFight}
+ */
 export default class PixelFightWebGPU {
-    /**
-     * @type {GPUCanvasContext}
-     */
-    context;
+    /** @type {Faction[]} */ factions;
+    /** @type {number} */ width;
+    /** @type {number} */ height;
+
+    /** @type {HTMLCanvasElement} */ canvas;
+    /** @type {GPUCanvasContext} */ context;
+
+    /** @type {Uint32Array} */ counts = new Uint32Array();
+    /** @type {bigint} */ iterations = 0n;
+    /** @type {0|1} */ useBuffer = 0;
+
+    /** @type {boolean} */ blocked;
+    /** @type {WebGPU} */ webGPU;
+    /** @type {GPUDevice} */ device;
 
     /**
      * @param {Faction[]} factions
@@ -191,46 +209,45 @@ export default class PixelFightWebGPU {
      * @param {number} height
      */
     constructor(factions, width, height) {
-        if (!GPUdevice) {
-            alert("browser does not support WebGPU");
-            throw "browser does not support WebGPU";
-        }
+        this.factions = factions;
         this.width = width;
         this.height = height;
-        this.factions = factions;
-        this.counts = new Uint32Array();
 
-        this.nextFrame = null;
-        this.iterations = 0;
+        if (!GPUdevice) throw new Error("GPUDevice not available");
+        this.device = GPUdevice;
 
         this.canvas = document.createElement("canvas");
         this.canvas.width = this.width;
         this.canvas.height = this.height;
-        // @ts-ignore
-        this.context = this.canvas.getContext("webgpu");
+        const ctx = this.canvas.getContext("webgpu");
+        if (!ctx) throw new Error("GPUCanvasContext not available");
+        this.context = ctx;
 
         this.blocked = false;
-        this.initWebGPU();
+        this.webGPU = this.initWebGPU();
         this.reset();
         this.draw();
     }
 
+    /**
+     * @returns {WebGPU}
+     */
     initWebGPU() {
         // Configure context
         this.context.configure({
-            device: GPUdevice,
+            device: this.device,
             format: GPUpresentationFormat,
             alphaMode: "premultiplied",
         });
 
         // Compile shaders(?)
-        const initShader = GPUdevice.createShaderModule({ label: "init", code: GPUshaderSourceComputeInit });
-        const computeShader = GPUdevice.createShaderModule({ label: "compute", code: GPUshaderSourceCompute });
-        const vertexShader = GPUdevice.createShaderModule({ label: "vertex", code: GPUshaderSourceVertex });
-        const fragmentShader = GPUdevice.createShaderModule({ label: "fragment", code: GPUshaderSourceFragment });
+        const initShader = this.device.createShaderModule({ label: "init", code: GPUshaderSourceComputeInit });
+        const computeShader = this.device.createShaderModule({ label: "compute", code: GPUshaderSourceCompute });
+        const vertexShader = this.device.createShaderModule({ label: "vertex", code: GPUshaderSourceVertex });
+        const fragmentShader = this.device.createShaderModule({ label: "fragment", code: GPUshaderSourceFragment });
 
         // Compute layout group
-        const bindLayoutCompute = GPUdevice.createBindGroupLayout({
+        const bindLayoutCompute = this.device.createBindGroupLayout({
             label: "bindLayoutCompute",
             entries: [
                 createBufferBinding(0, GPUShaderStage.COMPUTE, "read-only-storage"),
@@ -240,7 +257,7 @@ export default class PixelFightWebGPU {
             ],
         });
 
-        const bindLayoutInit = GPUdevice.createBindGroupLayout({
+        const bindLayoutInit = this.device.createBindGroupLayout({
             label: "bindLayoutInit",
             entries: [
                 createBufferBinding(0, GPUShaderStage.COMPUTE, "read-only-storage"),
@@ -251,7 +268,7 @@ export default class PixelFightWebGPU {
         });
 
         // Render layout group
-        const bindLayoutRender = GPUdevice.createBindGroupLayout({
+        const bindLayoutRender = this.device.createBindGroupLayout({
             label: "bindLayoutRender",
             entries: [
                 createBufferBinding(0, GPUShaderStage.VERTEX, "uniform"),
@@ -261,7 +278,7 @@ export default class PixelFightWebGPU {
 
         // Square vertex buffer
         let vertexData = new Uint32Array([0, 0, 0, 1, 1, 0, 1, 1]);
-        const bufferVertex = GPUdevice.createBuffer({
+        const bufferVertex = this.device.createBuffer({
             size: vertexData.byteLength,
             usage: GPUBufferUsage.VERTEX,
             mappedAtCreation: true,
@@ -269,37 +286,9 @@ export default class PixelFightWebGPU {
         new Uint32Array(bufferVertex.getMappedRange()).set(vertexData);
         bufferVertex.unmap();
 
-        /**
-         * Size of cell ID
-         * @type {GPUVertexBufferLayout}
-         */
-        const strideCellNumber = {
-            arrayStride: Uint32Array.BYTES_PER_ELEMENT,
-            stepMode: "instance",
-            attributes: [{
-                shaderLocation: 0,
-                offset: 0,
-                format: "uint32",
-            }],
-        };
-
-        /**
-         * Size of 2D coordinate
-         * @type {GPUVertexBufferLayout}
-         */
-        const strideVertexPosition = {
-            arrayStride: 2 * Uint32Array.BYTES_PER_ELEMENT,
-            stepMode: "vertex",
-            attributes: [{
-                shaderLocation: 1,
-                offset: 0,
-                format: "uint32x2",
-            }],
-        };
-
         // Create init pipeline
-        const pipelineComputeInit = GPUdevice.createComputePipeline({
-            layout: GPUdevice.createPipelineLayout({
+        const pipelineComputeInit = this.device.createComputePipeline({
+            layout: this.device.createPipelineLayout({
                 bindGroupLayouts: [bindLayoutInit],
             }),
             compute: {
@@ -312,8 +301,8 @@ export default class PixelFightWebGPU {
         });
 
         // Create compute pipeline
-        const pipelineCompute = GPUdevice.createComputePipeline({
-            layout: GPUdevice.createPipelineLayout({
+        const pipelineCompute = this.device.createComputePipeline({
+            layout: this.device.createPipelineLayout({
                 bindGroupLayouts: [bindLayoutCompute],
             }),
             compute: {
@@ -327,7 +316,7 @@ export default class PixelFightWebGPU {
 
         // Size parameter
         let sizeData = this.createSizeBufferContent();
-        const bufferSize = GPUdevice.createBuffer({
+        const bufferSize = this.device.createBuffer({
             size: sizeData.byteLength,
             usage:
                 GPUBufferUsage.STORAGE |
@@ -342,7 +331,7 @@ export default class PixelFightWebGPU {
         // Colors data
         let colorsData = new Float32Array(4 * this.factions.length);
         for(let i = 0; i < this.factions.length; i++) {
-            let color = this.factions[i].colorRGB;
+            let color = this.factions[i].rgb;
             let colorR = (color >> 16) & 0xFF;
             let colorG = (color >> 8) & 0xFF;
             let colorB = (color >> 0) & 0xFF;
@@ -353,7 +342,7 @@ export default class PixelFightWebGPU {
         }
 
         // Colors parameter
-        const bufferColors = GPUdevice.createBuffer({
+        const bufferColors = this.device.createBuffer({
             size: colorsData.byteLength,
             usage: GPUBufferUsage.STORAGE | GPUBufferUsage.VERTEX,
             mappedAtCreation: true,
@@ -366,20 +355,20 @@ export default class PixelFightWebGPU {
         const cells = new Uint32Array(length);
 
         // Create GPU buffers
-        const buffer0 = GPUdevice.createBuffer({
+        const buffer0 = this.device.createBuffer({
             size: cells.byteLength,
             usage: GPUBufferUsage.STORAGE | GPUBufferUsage.VERTEX,
             mappedAtCreation: true,
         });
         new Uint32Array(buffer0.getMappedRange()).set(cells);
         buffer0.unmap();
-        const buffer1 = GPUdevice.createBuffer({
+        const buffer1 = this.device.createBuffer({
             size: cells.byteLength,
             usage: GPUBufferUsage.STORAGE | GPUBufferUsage.VERTEX,
         });
 
         // Create counts buffers
-        const bufferCounts = GPUdevice.createBuffer({
+        const bufferCounts = this.device.createBuffer({
             size: this.factions.length * Uint32Array.BYTES_PER_ELEMENT,
             usage: GPUBufferUsage.STORAGE | GPUBufferUsage.VERTEX | GPUBufferUsage.COPY_SRC | GPUBufferUsage.COPY_DST,
             mappedAtCreation: true,
@@ -387,7 +376,7 @@ export default class PixelFightWebGPU {
         new Uint32Array(bufferCounts.getMappedRange()).set(new Uint32Array(this.factions.length));
         bufferCounts.unmap();
 
-        const bufferCountsDst = GPUdevice.createBuffer({
+        const bufferCountsDst = this.device.createBuffer({
             size: this.factions.length * Uint32Array.BYTES_PER_ELEMENT,
             usage: GPUBufferUsage.MAP_READ | GPUBufferUsage.COPY_DST,
             mappedAtCreation: true,
@@ -395,7 +384,7 @@ export default class PixelFightWebGPU {
         new Uint32Array(bufferCountsDst.getMappedRange()).set(new Uint32Array(this.factions.length));
         bufferCountsDst.unmap();
 
-        const bindGroupBuffer0 = GPUdevice.createBindGroup({
+        const bindGroupBuffer0 = this.device.createBindGroup({
             layout: bindLayoutCompute,
             entries: [
                 { binding: 0, resource: { buffer: bufferSize, size: sizeData.byteLength } },
@@ -406,7 +395,7 @@ export default class PixelFightWebGPU {
             ],
         });
 
-        const bindGroupBuffer1 = GPUdevice.createBindGroup({
+        const bindGroupBuffer1 = this.device.createBindGroup({
             layout: bindLayoutCompute,
             entries: [
                 { binding: 0, resource: { buffer: bufferSize, size: sizeData.byteLength } },
@@ -416,7 +405,7 @@ export default class PixelFightWebGPU {
             ],
         });
 
-        const bindGroupInit = GPUdevice.createBindGroup({
+        const bindGroupInit = this.device.createBindGroup({
             layout: bindLayoutInit,
             entries: [
                 { binding: 0, resource: { buffer: bufferSize, size: sizeData.byteLength } },
@@ -426,15 +415,34 @@ export default class PixelFightWebGPU {
             ],
         });
 
-        const pipelineRender = GPUdevice.createRenderPipeline({
-            layout: GPUdevice.createPipelineLayout({
+        const pipelineRender = this.device.createRenderPipeline({
+            layout: this.device.createPipelineLayout({
                 bindGroupLayouts: [bindLayoutRender],
             }),
             primitive: { topology: "triangle-strip" },
             vertex: {
                 module: vertexShader,
                 entryPoint: "main",
-                buffers: [strideCellNumber, strideVertexPosition],
+                buffers: [
+                    {
+                        arrayStride: Uint32Array.BYTES_PER_ELEMENT,
+                        stepMode: "instance",
+                        attributes: [{
+                            shaderLocation: 0,
+                            offset: 0,
+                            format: "uint32",
+                        }],
+                    },
+                    {
+                        arrayStride: 2 * Uint32Array.BYTES_PER_ELEMENT,
+                        stepMode: "vertex",
+                        attributes: [{
+                            shaderLocation: 1,
+                            offset: 0,
+                            format: "uint32x2",
+                        }],
+                    },
+                ],
             },
             fragment: {
                 module: fragmentShader,
@@ -443,7 +451,7 @@ export default class PixelFightWebGPU {
             },
         });
 
-        const bindGroupRender = GPUdevice.createBindGroup({
+        const bindGroupRender = this.device.createBindGroup({
             label: "bindGroupRender",
             layout: bindLayoutRender,
             entries: [
@@ -467,7 +475,7 @@ export default class PixelFightWebGPU {
         });
 
         // Save ALL of this to a convenient webGPU object
-        this.webGPU = {
+        return {
             shaders: {
                 compute: computeShader,
                 vertex: vertexShader,
@@ -499,22 +507,21 @@ export default class PixelFightWebGPU {
                 render: pipelineRender,
                 init: pipelineComputeInit,
             },
-            strides: {
-                vertexPosition: strideVertexPosition,
-                cellNumber: strideCellNumber,
-            },
             countsSize: this.factions.length * Uint32Array.BYTES_PER_ELEMENT,
         };
     }
 
+    /**
+     * @returns {void}
+     */
     reset() {
         this.useBuffer = 0;
-        const commandEncoder = GPUdevice.createCommandEncoder();
+        const commandEncoder = this.device.createCommandEncoder();
 
         // Reset faction counts
-        let filler = new Uint32Array(this.factions.length);
-        GPUdevice.queue.writeBuffer(this.webGPU.buffers.counts, 0, filler);
-        GPUdevice.queue.writeBuffer(this.webGPU.buffers.countsDst, 0, filler);
+        const filler = new Uint32Array(this.factions.length);
+        this.device.queue.writeBuffer(this.webGPU.buffers.counts, 0, filler);
+        this.device.queue.writeBuffer(this.webGPU.buffers.countsDst, 0, filler);
 
         // Run compute shader
         const computePassEncoder = commandEncoder.beginComputePass();
@@ -525,24 +532,28 @@ export default class PixelFightWebGPU {
             this.height / 16,
         );
         computePassEncoder.end();
-        GPUdevice.queue.submit([commandEncoder.finish()]);
+        this.device.queue.submit([commandEncoder.finish()]);
     }
 
+    /**
+     * @returns {void}
+     */
     step() {
-        this.useBuffer = 1 - this.useBuffer;
+        this.useBuffer = this.useBuffer ? 0 : 1;
         this.iterations++;
         this.draw(true);
     }
 
     /**
      * @param {boolean} doUpdate
+     * @param {Promise<void>} doUpdate
      */
     async draw(doUpdate = false) {
-        const commandEncoder = GPUdevice.createCommandEncoder();
+        const commandEncoder = this.device.createCommandEncoder();
 
         if (doUpdate) {
             let data = this.createSizeBufferContent();
-            GPUdevice.queue.writeBuffer(this.webGPU.buffers.size, 0, data);
+            this.device.queue.writeBuffer(this.webGPU.buffers.size, 0, data);
 
             // Run compute shader
             const computePassEncoder = commandEncoder.beginComputePass();
@@ -581,7 +592,7 @@ export default class PixelFightWebGPU {
             );
         }
 
-        GPUdevice.queue.submit([commandEncoder.finish()]);
+        this.device.queue.submit([commandEncoder.finish()]);
 
         // Read out thing
         if (!this.blocked) {
@@ -597,13 +608,21 @@ export default class PixelFightWebGPU {
      * @returns {Uint32Array}
      */
     createSizeBufferContent() {
-        return new Uint32Array([this.width, this.height, this.factions.length, Math.random() * 0x00FF_FFFF]);
+        return new Uint32Array([
+            this.width,
+            this.height,
+            this.factions.length,
+            Math.random() * 0x00FF_FFFF,
+        ]);
     }
 
+    /**
+     * @returns {PixelGameData}
+     */
     getGameData() {
-        let counts = new Array(this.factions.length);
-        this.counts.forEach(function(v, i) {
-            counts[i] = v;
+        const counts = new BigUint64Array(this.factions.length);
+        this.counts.forEach((v, i) => {
+            counts[i] = BigInt(v);
         });
         return {
             iterations: this.iterations,
@@ -612,6 +631,9 @@ export default class PixelFightWebGPU {
         };
     }
 
+    /**
+     * @returns {HTMLCanvasElement}
+     */
     getCanvas() {
         return this.canvas;
     }
