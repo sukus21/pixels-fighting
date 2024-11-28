@@ -34,22 +34,22 @@
 
         ;; Allocate space for buffer A
         (global.set $bufferA (local.get $memPtr))
-        (i32.mul (i32.mul (local.get $width) (local.get $height)) (i32.const 4))
+        (i32.shl (i32.mul (local.get $width) (local.get $height)) (i32.const 2))
         (local.set $memPtr (i32.add (local.get $memPtr)))
         
         ;; Allocate space for buffer B
         (global.set $bufferB (local.get $memPtr))
-        (i32.mul (i32.mul (local.get $width) (local.get $height)) (i32.const 4))
+        (i32.shl (i32.mul (local.get $width) (local.get $height)) (i32.const 2))
         (local.set $memPtr (i32.add (local.get $memPtr)))
         
         ;; Allocate space for faction colors
         (global.set $factionColors (local.get $memPtr))
-        (i32.mul (local.get $factionCount) (i32.const 4))
+        (i32.shl (local.get $factionCount) (i32.const 2))
         (local.set $memPtr (i32.add (local.get $memPtr)))
         
         ;; Allocate space for owner counts
         (global.set $ownerCounts (local.get $memPtr))
-        (i32.mul (local.get $factionCount) (i32.const 8))
+        (i32.shl (local.get $factionCount) (i32.const 3))
         (local.set $memPtr (i32.add (local.get $memPtr)))
         
         ;; Allocate space for neighbor buffer
@@ -68,7 +68,7 @@
         (param $faction_id i32)
         (param $color i32)
 
-        (i32.mul (local.get $faction_id) (i32.const 4))
+        (i32.shl (local.get $faction_id) (i32.const 2))
         (i32.add (global.get $factionColors))
         
         ;; Reverse RGBA to BGRA
@@ -98,7 +98,7 @@
         ;; Reset faction counts
         (global.get $factionCount)
         (i32.const 0)
-        (i32.mul (global.get $factionCount) (i32.const 4))
+        (i32.shl (global.get $factionCount) (i32.const 2))
         (memory.fill)
         
         (local.set $i (i32.const 0))
@@ -139,14 +139,14 @@
                         (local.set $owner (i32.trunc_f64_u))
 
                         ;; Write to buffers
-                        (local.set $offset (i32.mul (i32.add (local.get $x) (local.get $j)) (i32.const 4)))
+                        (local.set $offset (i32.shl (i32.add (local.get $x) (local.get $j)) (i32.const 2)))
                         (i32.add (global.get $bufferB) (local.get $offset))
                         (i32.add (global.get $bufferA) (local.get $offset))
                         (i32.store (local.get $owner))
                         (i32.store (local.get $owner))
 
                         ;; Increase owner count
-                        (local.set $offset (i32.mul (local.get $owner) (i32.const 8)))
+                        (local.set $offset (i32.shl (local.get $owner) (i32.const 3)))
                         (local.set $offset (i32.add (global.get $ownerCounts) (local.get $offset)))
                         (local.get $offset)
                         (i64.load (local.get $offset))
@@ -217,7 +217,7 @@
                         ;; Convert coordinates to pointer
                         (i32.mul (local.get $j) (global.get $width))
                         (i32.add (local.get $i))
-                        (i32.mul (i32.const 4))
+                        (i32.shl (i32.const 2))
                         
                         ;; Pointers to new and old buffers
                         (local.tee $ptr)
@@ -226,7 +226,7 @@
                         
                         ;; Get pointer to owner buffer
                         (i32.load)
-                        (i32.mul (i32.const 8))
+                        (i32.shl (i32.const 3))
                         (i32.add (global.get $ownerCounts))
 
                         ;; Decrement old owner
@@ -250,7 +250,7 @@
                         (i32.store)
                         
                         ;; Increment new owner
-                        (i32.mul (local.get $ptr) (i32.const 8))
+                        (i32.shl (local.get $ptr) (i32.const 3))
                         (i32.add (global.get $ownerCounts))
                         (local.tee $ptr)
                         (i64.add (i64.load (local.get $ptr)) (i64.const 1))
@@ -275,50 +275,38 @@
     (func $getNeighbor
         (param $offsetX i32)
         (param $offsetY i32)
-        (local $neighbor i64)
+        (local $neighbor i32)
 
-        ;; Get neighbor pixel
+        ;; Get X position
         (i32.add (local.get $offsetX) (global.get $currentX))
+        (local.tee $offsetX)
+        (if (i32.ge_u (global.get $width)) (then
+            (return (i32.const -1))
+        ))
+
+        ;; Get Y position
         (i32.add (local.get $offsetY) (global.get $currentY))
-        (global.get $queryBuffer)
-        (call $getPixel)
+        (local.tee $offsetY)
+        (if (i32.ge_u (global.get $height)) (then
+            (return (i32.const -1))
+        ))
+
+        ;; Get pixel offset
+        (i32.mul (local.get $offsetY) (global.get $width))
+        (i32.add (local.get $offsetX))
+        (i32.shl (i32.const 2))
+        (i32.add (global.get $queryBuffer))
+        (i32.load)
 
         ;; Does neighbor exist? (bit 32 set)
         (local.tee $neighbor)
-        (if (i64.le_u (i64.const 0xFFFFFFFF)) (then
+        (if (i32.eq (i32.const -1)) (then
             (return)
         ))
 
         ;; Store in- and advance neighbor buffer
-        (i32.store (global.get $neighborBuffer) (i32.wrap_i64 (local.get $neighbor)))
+        (i32.store (global.get $neighborBuffer) (local.get $neighbor))
         (global.set $neighborBuffer (i32.add (global.get $neighborBuffer) (i32.const 4)))
-    )
-
-    (func $getPixel
-        (param $pixelX i32)
-        (param $pixelY i32)
-        (param $p2 i32)
-        (result i64)
-
-        ;; Bounds check coordinates
-        (if (i32.ge_u (local.get $pixelX) (global.get $width)) (then
-            (return (i64.const 0))
-        ))
-        (if (i32.ge_u (local.get $pixelY) (global.get $height)) (then
-            (return (i64.const 0))
-        ))
-
-        ;; Convert coordinates to pointer
-        (i32.mul (local.get $pixelY) (global.get $width))
-        (i32.add (local.get $pixelX))
-        (i32.mul (i32.const 4))
-        (i32.add (local.get $p2))
-
-        ;; Load and return result
-        (i32.load)
-        (i64.extend_i32_u)
-        (i64.or (i64.const 0x100000000))
-        (return)
     )
 
     (func $rng
@@ -366,7 +354,7 @@
                 (i32.add (local.get $dataBuffer) (i32.shl (local.get $i) (i32.const 2)))
 
                 ;; Get color of owner
-                (i32.mul (i32.load) (i32.const 4))
+                (i32.shl (i32.load) (i32.const 2))
                 (i32.add (global.get $factionColors))
                 (i32.load)
 
@@ -396,7 +384,7 @@
         (param $p0 i32)
         (result i64)
 
-        (i32.mul (local.get $p0) (i32.const 8))
+        (i32.shl (local.get $p0) (i32.const 3))
         (i32.add (global.get $ownerCounts))
         (i64.load)
     )
