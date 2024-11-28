@@ -1,3 +1,6 @@
+import { PixelFight, PixelGameData } from "./@types/pixelfight.js";
+import Faction from "./faction.js";
+
 const vertexShaderSourceCode = `
     #version 100
     attribute vec2 aPosition;
@@ -23,23 +26,18 @@ const fragmentShaderSourceCode = `
     }
 `;
 
-export default class PixelFightWebGL {
-    /**
-     * 
-     * @param {Faction[]} factions 
-     * @param {number} width 
-     * @param {number} height 
-     * @param {number} scale 
-     */
-    constructor(factions, width, height, scale) {
-        this.width = width;
-        this.height = height;
-        this.scale = scale;
-        this.factions = factions;
+export default class PixelFightWebGL implements PixelFight {
+    canvas: HTMLCanvasElement;
+    context: WebGLRenderingContext;
 
+    constructor(
+        private readonly factions: Faction[],
+        private readonly width: number,
+        private readonly height: number,
+    ) {
         this.canvas = document.createElement("canvas");
-        this.canvas.setAttribute("width", this.width*this.scale);
-        this.canvas.setAttribute("height", this.height*this.scale);
+        this.canvas.width = this.width;
+        this.canvas.height = this.height;
         this.context = this.canvas.getContext("webgl");
         document.body.append(this.canvas);
 
@@ -47,7 +45,7 @@ export default class PixelFightWebGL {
         //this.reset();
     }
 
-    webglSetup() {
+    webglSetup(): void {
         const gl = this.context;
         this.context.clearColor(1, 0, 1, 1);
         this.context.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
@@ -55,7 +53,7 @@ export default class PixelFightWebGL {
         let vertexShader = gl.createShader(gl.VERTEX_SHADER);
         gl.shaderSource(vertexShader, vertexShaderSourceCode);
         gl.compileShader(vertexShader);
-        if(!gl.getShaderParameter(vertexShader, gl.COMPILE_STATUS)) {
+        if (!gl.getShaderParameter(vertexShader, gl.COMPILE_STATUS)) {
             let compileError = gl.getShaderInfoLog(vertexShader);
             console.error("vertex shader compile error: \n" + compileError);
         }
@@ -63,7 +61,7 @@ export default class PixelFightWebGL {
         let fragmentShader = gl.createShader(gl.FRAGMENT_SHADER);
         gl.shaderSource(fragmentShader, fragmentShaderSourceCode);
         gl.compileShader(fragmentShader);
-        if(!gl.getShaderParameter(fragmentShader, gl.COMPILE_STATUS)) {
+        if (!gl.getShaderParameter(fragmentShader, gl.COMPILE_STATUS)) {
             let compileError = gl.getShaderInfoLog(fragmentShader);
             console.error("fragment shader compile error: \n" + compileError);
         }
@@ -109,7 +107,7 @@ export default class PixelFightWebGL {
             0.0, 1.0,
         ]
 
-        let texture = gl.createTexture();
+        const texture = gl.createTexture();
         gl.activeTexture(gl.TEXTURE0);
         gl.bindTexture(gl.TEXTURE_2D, texture);
         gl.texImage2D(gl.TEXTURE_2D, 0, gl.ALPHA, this.width, this.height, 0, gl.UNSIGNED_BYTE, gl.UNSIGNED_BYTE, null);
@@ -117,13 +115,13 @@ export default class PixelFightWebGL {
         gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
         gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
 
-        let vertexBuffer = gl.createBuffer();
+        const vertexBuffer = gl.createBuffer();
         gl.bindBuffer(gl.ARRAY_BUFFER, vertexBuffer);
         gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(verts), gl.STATIC_DRAW);
         gl.enableVertexAttribArray(aPosition);
         gl.vertexAttribPointer(aPosition, 2, gl.FLOAT, false, 0, 0);
         
-        let texcoordBuffer = gl.createBuffer();
+        const texcoordBuffer = gl.createBuffer();
         gl.bindBuffer(gl.ARRAY_BUFFER, texcoordBuffer);
         gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(texcoords), gl.STATIC_DRAW);
         gl.enableVertexAttribArray(aTexCoord);
@@ -134,31 +132,23 @@ export default class PixelFightWebGL {
         gl.drawArrays(gl.TRIANGLES, 0, 6);
     }
 
-    reset() {
-        
+    reset(): void {
         this.draw();
     }
 
-    start() {
-
+    step(): void {
     }
 
-    stop() {
-
-    }
-
-    run() {
-
-    }
-
-    draw() {
+    draw(): void {
         const gl = this.context;
         this.context.clearColor(1, 0, 1, 1);
         this.context.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
     }
 
-    static setup() {
-        let pixelFight = new PixelFightWebGL(factionList(10), 125, 125, 4);
-        //pixelFight.start();
+    getCanvas(): HTMLCanvasElement {
+        return this.canvas;
+    }
+    getGameData(): PixelGameData {
+        throw new Error("Method not implemented.");
     }
 }

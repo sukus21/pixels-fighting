@@ -1,0 +1,12 @@
+{
+    "compileOnSave": true,
+    "include": [
+        "./src",
+    ],
+    "compilerOptions": {
+        "target": "ESNext",
+        "module": "ESNext",
+        "outDir": "web/src",
+        "sourceMap": true,
+    },
+}

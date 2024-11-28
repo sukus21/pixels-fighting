@@ -1,76 +1,46 @@
-// @ts-check
-
+import { PixelFight, PixelGameData } from "./@types/pixelfight.js";
 import Faction from "./faction.js";
 
-export default class PixelFightCPU {
-    /**
-     * @type {number[][]}
-     */
-    bufferA;
+export default class PixelFightCPU implements PixelFight {
+    bufferA: Uint32Array[];
+    bufferB: Uint32Array[];
+    useBuffer: 0|1 = 0;
+    buffers: [Uint32Array[], Uint32Array[]];
+    count: BigUint64Array;
+    iterations: bigint;
 
-    /**
-     * @type {number[][]}
-     */
-    bufferB;
+    canvas: HTMLCanvasElement;
+    context: CanvasRenderingContext2D;
 
-    /**
-     * @type {0|1}
-     */
-    useBuffer = 0;
-
-    /**
-     * @type {[number[][], number[][]]}
-     */
-    buffers;
-
-    /**
-     * @type {number[]}
-     */
-    count;
-
-    /**
-     * @type {number}
-     */
-    iterations = 0;
-
-    /**
-     * @param {Faction[]} factions
-     * @param {number} width
-     * @param {number} height
-     */
-    constructor(factions, width, height) {
-        this.width = width;
-        this.height = height;
-        this.factions = factions;
-        this.iterations = 0;
-
+    constructor(
+        private readonly factions: Faction[],
+        private readonly width: number,
+        private readonly height: number,
+    ) {
         this.canvas = document.createElement("canvas");
         this.canvas.width = this.width;
         this.canvas.height = this.height;
         this.context = this.canvas.getContext("2d");
-        if (!this.context) {
-            throw new Error("browser does not support CanvasRenderingContext2D");
-        }
 
-        this.reset();
-    }
-
-    reset() {
-        this.iterations = 0;
-        this.useBuffer = 0;
         this.bufferA = new Array(this.width);
         this.bufferB = new Array(this.width);
         this.buffers = [this.bufferA, this.bufferB];
-        this.count = new Array(this.factions.length);
-        for (let i = 0; i < this.factions.length; i++) {
-            this.count[i] = 0;
+        for (let i = 0; i < this.height; i++) {
+            this.bufferA[i] = new Uint32Array(this.width);
+            this.bufferB[i] = new Uint32Array(this.height);
         }
 
-        for (let i = 0; i < this.width; i++) {
-            this.bufferA[i] = new Array(this.height);
-            this.bufferB[i] = new Array(this.height);
+        this.count = new BigUint64Array(this.factions.length);
+        this.reset();
+    }
 
-            //Evenly distrubute pixels to each side
+    reset(): void {
+        this.iterations = 0n;
+        this.useBuffer = 0;
+        this.count.fill(0n, 0, this.factions.length);
+
+        // "Evenly" distrubute pixels to each side
+        for (let i = 0; i < this.width; i++) {
             for (let j = 0; j < this.height; j++) {
                 let angle = Math.atan2(this.width/2 - i - 0.5, this.height/2 - j - 0.5) * 180 / Math.PI;
                 while (angle < 0) angle += 360;
@@ -84,7 +54,7 @@ export default class PixelFightCPU {
         this.draw();
     }
 
-    step() {
+    step(): void {
         this.iterations++;
         
         // Get and swap buffers
@@ -126,12 +96,12 @@ export default class PixelFightCPU {
         this.draw();
     }
 
-    draw() {
+    draw(): void {
         const gameBuffer = this.buffers[this.useBuffer];
         const drawBuffer = this.context.createImageData(this.width, this.height);
         for (let i = 0; i < this.width; i++) {
             for (let j = 0; j < this.height; j++) {
-                let color = this.factions[gameBuffer[i][j]].colorRGB;
+                let color = this.factions[gameBuffer[i][j]].rgb;
                 let d = (i + j * this.width) * 4;
                 drawBuffer.data[d+0] = color >> 16;
                 drawBuffer.data[d+1] = (color >> 8) & 255;
@@ -142,11 +112,11 @@ export default class PixelFightCPU {
         this.context.putImageData(drawBuffer, 0, 0);
     }
 
-    getCanvas() {
+    getCanvas(): HTMLCanvasElement {
         return this.canvas;
     }
 
-    getGameData() {
+    getGameData(): PixelGameData {
         return {
             iterations: this.iterations,
             factions: this.factions,

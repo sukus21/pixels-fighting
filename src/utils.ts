@@ -1,11 +1,4 @@
-// @ts-check
-
-/**
- * Template cloner
- * @param {string} templateId
- * @returns {HTMLElement}
- */
-export function templateCreate(templateId) {
+export function templateCreate(templateId: string): HTMLElement {
     const element = document.getElementById(templateId);
     if (!element) throw new Error("could not find element " + templateId);
     element.remove();

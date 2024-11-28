@@ -1,5 +1,4 @@
-// @ts-check
-
+import { PixelFight, PixelGameData } from "./@types/pixelfight.js";
 import Faction from "./faction.js";
 
 const GPUshaderSourceCompute = /* wgsl */ `
@@ -161,17 +160,11 @@ const GPUshaderSourceFragment = /* wgsl */ `
     }
 `;
 
-const GPUadapter = await navigator.gpu?.requestAdapter();
-const GPUdevice = await GPUadapter?.requestDevice();
-const GPUpresentationFormat = navigator?.gpu?.getPreferredCanvasFormat();
+const GPUadapter = await navigator.gpu.requestAdapter();
+const GPUdevice = await GPUadapter.requestDevice();
+const GPUpresentationFormat = navigator.gpu.getPreferredCanvasFormat();
 
-/**
- * @param {number} binding
- * @param {GPUFlagsConstant} visibility
- * @param {GPUBufferBindingType} bufferType
- * @returns {GPUBindGroupLayoutEntry}
- */
-function createBufferBinding(binding, visibility, bufferType) {
+function createBufferBinding(binding: number, visibility: GPUFlagsConstant, bufferType: GPUBufferBindingType): GPUBindGroupLayoutEntry {
     return {
         binding: binding,
         visibility: visibility,
@@ -179,34 +172,67 @@ function createBufferBinding(binding, visibility, bufferType) {
     };
 }
 
-export default class PixelFightWebGPU {
-    /**
-     * @type {GPUCanvasContext}
-     */
-    context;
+type WebGPU = {
+    shaders: {
+        compute: GPUShaderModule,
+        vertex: GPUShaderModule,
+        fragment: GPUShaderModule,
+        init: GPUShaderModule,
+    },
+    bindGroupLayouts: {
+        compute: GPUBindGroupLayout,
+        render: GPUBindGroupLayout,
+        init: GPUBindGroupLayout,
+    },
+    bindGroups: {
+        buffer0: GPUBindGroup,
+        buffer1: GPUBindGroup,
+        render: GPUBindGroup,
+        init: GPUBindGroup,
+    },
+    buffers: {
+        size: GPUBuffer,
+        vertex: GPUBuffer,
+        buffer0: GPUBuffer,
+        buffer1: GPUBuffer,
+        colors: GPUBuffer,
+        counts: GPUBuffer,
+        countsDst: GPUBuffer,
+    },
+    pipelines: {
+        compute: GPUComputePipeline,
+        render: GPURenderPipeline,
+        init: GPUComputePipeline,
+    },
+    strides: {
+        vertexPosition: GPUVertexBufferLayout,
+        cellNumber: GPUVertexBufferLayout,
+    },
+    countsSize: number,
+};
 
-    /**
-     * @param {Faction[]} factions
-     * @param {number} width
-     * @param {number} height
-     */
-    constructor(factions, width, height) {
-        if (!GPUdevice) {
-            alert("browser does not support WebGPU");
-            throw "browser does not support WebGPU";
-        }
-        this.width = width;
-        this.height = height;
-        this.factions = factions;
+export default class PixelFightWebGPU implements PixelFight {
+    canvas: HTMLCanvasElement;
+    context: GPUCanvasContext;
+
+    counts: Uint32Array;
+    iterations: bigint;
+    useBuffer: 0|1;
+
+    blocked: boolean;
+    webGPU: WebGPU;
+
+    constructor(
+        private readonly factions: Faction[],
+        private readonly width: number,
+        private readonly height: number,
+    ) {
         this.counts = new Uint32Array();
-
-        this.nextFrame = null;
-        this.iterations = 0;
+        this.iterations = 0n;
 
         this.canvas = document.createElement("canvas");
         this.canvas.width = this.width;
         this.canvas.height = this.height;
-        // @ts-ignore
         this.context = this.canvas.getContext("webgpu");
 
         this.blocked = false;
@@ -215,7 +241,7 @@ export default class PixelFightWebGPU {
         this.draw();
     }
 
-    initWebGPU() {
+    initWebGPU(): void {
         // Configure context
         this.context.configure({
             device: GPUdevice,
@@ -269,11 +295,8 @@ export default class PixelFightWebGPU {
         new Uint32Array(bufferVertex.getMappedRange()).set(vertexData);
         bufferVertex.unmap();
 
-        /**
-         * Size of cell ID
-         * @type {GPUVertexBufferLayout}
-         */
-        const strideCellNumber = {
+        // Size of cell ID
+        const strideCellNumber: GPUVertexBufferLayout = {
             arrayStride: Uint32Array.BYTES_PER_ELEMENT,
             stepMode: "instance",
             attributes: [{
@@ -283,11 +306,8 @@ export default class PixelFightWebGPU {
             }],
         };
 
-        /**
-         * Size of 2D coordinate
-         * @type {GPUVertexBufferLayout}
-         */
-        const strideVertexPosition = {
+        // Size of 2D coordinate
+        const strideVertexPosition: GPUVertexBufferLayout = {
             arrayStride: 2 * Uint32Array.BYTES_PER_ELEMENT,
             stepMode: "vertex",
             attributes: [{
@@ -342,7 +362,7 @@ export default class PixelFightWebGPU {
         // Colors data
         let colorsData = new Float32Array(4 * this.factions.length);
         for(let i = 0; i < this.factions.length; i++) {
-            let color = this.factions[i].colorRGB;
+            let color = this.factions[i].rgb;
             let colorR = (color >> 16) & 0xFF;
             let colorG = (color >> 8) & 0xFF;
             let colorB = (color >> 0) & 0xFF;
@@ -507,12 +527,12 @@ export default class PixelFightWebGPU {
         };
     }
 
-    reset() {
+    reset(): void {
         this.useBuffer = 0;
         const commandEncoder = GPUdevice.createCommandEncoder();
 
         // Reset faction counts
-        let filler = new Uint32Array(this.factions.length);
+        const filler = new Uint32Array(this.factions.length);
         GPUdevice.queue.writeBuffer(this.webGPU.buffers.counts, 0, filler);
         GPUdevice.queue.writeBuffer(this.webGPU.buffers.countsDst, 0, filler);
 
@@ -528,16 +548,13 @@ export default class PixelFightWebGPU {
         GPUdevice.queue.submit([commandEncoder.finish()]);
     }
 
-    step() {
-        this.useBuffer = 1 - this.useBuffer;
+    step(): void {
+        this.useBuffer = this.useBuffer ? 0 : 1;
         this.iterations++;
         this.draw(true);
     }
 
-    /**
-     * @param {boolean} doUpdate
-     */
-    async draw(doUpdate = false) {
+    async draw(doUpdate = false): Promise<void> {
         const commandEncoder = GPUdevice.createCommandEncoder();
 
         if (doUpdate) {
@@ -593,17 +610,14 @@ export default class PixelFightWebGPU {
         }
     }
 
-    /**
-     * @returns {Uint32Array}
-     */
-    createSizeBufferContent() {
+    createSizeBufferContent(): Uint32Array {
         return new Uint32Array([this.width, this.height, this.factions.length, Math.random() * 0x00FF_FFFF]);
     }
 
-    getGameData() {
-        let counts = new Array(this.factions.length);
-        this.counts.forEach(function(v, i) {
-            counts[i] = v;
+    getGameData(): PixelGameData {
+        const counts = new BigUint64Array(this.factions.length);
+        this.counts.forEach((v, i) => {
+            counts[i] = BigInt(v);
         });
         return {
             iterations: this.iterations,
@@ -612,7 +626,7 @@ export default class PixelFightWebGPU {
         };
     }
 
-    getCanvas() {
+    getCanvas(): HTMLCanvasElement {
         return this.canvas;
     }
 }
