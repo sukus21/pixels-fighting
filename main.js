@@ -464,19 +464,19 @@ async function run(settings) {
 }
 
 // Add listener to run button
-configRunButton.addEventListener("click", function() {
+configRunButton.addEventListener("click", () => {
     settings.apply();
     let url = settings.createUrl(true);
     window.location.search = url;
-
-    containerConfig.classList.add("hidden");
-    containerMain.classList.remove("hidden");
 });
 
 // Try running?
 if (settings.play) {
     await run(settings);
     settings.play = true;
+
+    containerConfig.classList.add("hidden");
+    containerMain.classList.remove("hidden");
 }
 
 // Start the thing
