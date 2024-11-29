@@ -1,7 +1,7 @@
 // @ts-check
 
 /**
- * @import { PixelFight, PixelFightConstructor } from "./@types/pixelfight";
+ * @import { PixelFight, PixelFightConstructor, PixelGameData } from "./@types/pixelfight";
  */
 
 import Faction, { FactionInfo, makeColor } from "./faction.js";
@@ -204,22 +204,24 @@ class GameRunner {
 
     /** @type {GameSettings} */ settings;
     /** @type {PixelFight} */ game;
-    /** @type {Faction[]} */ factions;
 
     /** @type {?number} */ nextFrame = null;
     /** @type {?number} */ interval = null;
 
     /**
-     * @param {GameSettings} settings 
-     * @param {PixelFight} game 
-     * @param {Faction[]} factions 
+     * @param {GameSettings} settings
+     * @param {PixelFightConstructor} constructor
      */
-    constructor(settings, game, factions) {
+    constructor(settings, constructor) {
         this.settings = settings;
-        this.game = game;
-        this.factions = factions;
+        this.game = new constructor({
+            factions: settings.factions,
+            width: settings.width,
+            height: settings.height,
+            updateGameData: this.updateGameData,
+        });
 
-        this.alive = this.factions.length;
+        this.alive = settings.factions.length;
         this.startTime = this.formatTime();
         this.counts = this.setup();
     }
@@ -231,24 +233,23 @@ class GameRunner {
         if (this.inited) return [];
         this.inited = true;
 
-        const results = new Array(this.factions.length);
-        for (let i = 0; i < this.factions.length; i++) {
+        const results = new Array(this.settings.factions.length);
+        this.settings.factions.forEach((faction, i) => {
             const element = /** @type {HTMLElement} */ (templateCount.cloneNode(true));
             const infoColor = /** @type {HTMLElement} */ (element.querySelector(".info-color"));
             const infoName = /** @type {HTMLElement} */ (element.querySelector(".info-name"));
             const counter = /** @type {HTMLElement} */ (element.querySelector(".info-text"));
-            infoColor.style.backgroundColor = this.factions[i].color;
-            infoName.innerText = this.factions[i].name;
+            infoColor.style.backgroundColor = faction.color;
+            infoName.innerText = faction.name;
             counter.innerText = "";
             containerCounts.appendChild(element);
             results[i] = new FactionInfo(element, counter, false);
-        }
+        });
         
         // Refresh
         this.interval = setInterval(() => {
             if (!this.running) this.game.draw();
-            this.updateScores(); 
-        }, 50);
+        }, 1000);
 
         // Controls
         const canvas = this.game.getCanvas();
@@ -269,10 +270,10 @@ class GameRunner {
     }
 
     /**
+     * @param {PixelGameData} gameData
      * @returns {void}
      */
-    updateScores() {
-        const gameData = this.game.getGameData();
+    updateGameData = (gameData) => {
         let leader = 0;
         for (let i = 0; i < this.counts.length; i++) {
             const factionInfo = this.counts[i];
@@ -285,9 +286,9 @@ class GameRunner {
                 containerCounts.removeChild(factionInfo.container);
                 this.alive--;
 
-                let faction = this.factions[i];
-                let time = this.formatTime();
-                let message = this.getDeathMessage(faction.name, gameData.iterations, time);
+                const faction = this.settings.factions[i];
+                const time = this.formatTime();
+                const message = this.getDeathMessage(faction.name, gameData.iterations, time);
                 this.addEvent(faction.color, faction.name, time, message);
 
                 // Stop game and announce winner
@@ -295,7 +296,7 @@ class GameRunner {
                     this.stop();
                     for (let j = 0; j < this.counts.length; j++) {
                         if (!this.counts[j].isDead) {
-                            const winner = this.factions[j];
+                            const winner = this.settings.factions[j];
                             const message = this.getVictoryMessage(winner.name, gameData.iterations, time);
                             this.addEvent(winner.color, winner.name, time, message);
                             break;
@@ -312,7 +313,7 @@ class GameRunner {
         // Update alive count
         statsAlive.innerText = this.alive.toString();
         statsIterations.innerText = gameData.iterations.toString();
-        statsLead.innerText = this.factions[leader].name;
+        statsLead.innerText = this.settings.factions[leader].name;
     }
 
     /**
@@ -458,8 +459,7 @@ async function run(settings) {
     });
 
     // Construct game and start running
-    const gpuFight = new constructor(settings.factions, settings.width, settings.height);
-    const gameRunner = new GameRunner(settings, gpuFight, settings.factions);
+    const gameRunner = new GameRunner(settings, constructor);
     gameRunner.start();
 }
 

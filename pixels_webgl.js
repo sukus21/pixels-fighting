@@ -1,7 +1,7 @@
 // @ts-check
 
 /**
- * @import { PixelFight, PixelGameData } from "./@types/pixelfight";
+ * @import { PixelFight, PixelFightParams, PixelGameData } from "./@types/pixelfight";
  */
 
 import Faction from "./faction.js";
@@ -35,26 +35,19 @@ const fragmentShaderSourceCode = `
  * @implements {PixelFight}
  */
 export default class PixelFightWebGL {
+    /** @type {PixelFightParams} */ params;
     /** @type {HTMLCanvasElement} */ canvas;
     /** @type {WebGLRenderingContext} */ context;
 
-    /** @type {Faction[]} */ factions;
-    /** @type {number} */ width;
-    /** @type {number} */ height;
-
     /**
-     * @param {Faction[]} factions
-     * @param {number} width
-     * @param {number} height
+     * @param {PixelFightParams} params
      */
-    constructor(factions, width, height) {
-        this.factions = factions;
-        this.width = width;
-        this.height = height;
+    constructor(params) {
+        this.params = params;
 
         this.canvas = document.createElement("canvas");
-        this.canvas.width = this.width;
-        this.canvas.height = this.height;
+        this.canvas.width = this.params.width;
+        this.canvas.height = this.params.height;
         const ctx = this.canvas.getContext("webgl");
         if (!ctx) throw new Error("WebGLRenderingContext not available");
         this.context = ctx;
@@ -134,7 +127,7 @@ export default class PixelFightWebGL {
         const texture = gl.createTexture();
         gl.activeTexture(gl.TEXTURE0);
         gl.bindTexture(gl.TEXTURE_2D, texture);
-        gl.texImage2D(gl.TEXTURE_2D, 0, gl.ALPHA, this.width, this.height, 0, gl.UNSIGNED_BYTE, gl.UNSIGNED_BYTE, null);
+        gl.texImage2D(gl.TEXTURE_2D, 0, gl.ALPHA, this.params.width, this.params.height, 0, gl.UNSIGNED_BYTE, gl.UNSIGNED_BYTE, null);
         gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
         gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
         gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
@@ -183,12 +176,5 @@ export default class PixelFightWebGL {
      */
     getCanvas() {
         return this.canvas;
-    }
-
-    /**
-     * @returns {PixelGameData}
-     */
-    getGameData() {
-        throw new Error("method not implemented");
     }
 }

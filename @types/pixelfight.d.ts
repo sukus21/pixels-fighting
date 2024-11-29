@@ -6,8 +6,15 @@ type PixelGameData = {
     counts: BigUint64Array,
 };
 
+type PixelFightParams = {
+    factions: Faction[],
+    width: number,
+    height: number,
+    updateGameData: (gameData: PixelGameData) => void,
+};
+
 type PixelFightConstructor = {
-    new (factions: Faction[], width: number, height: number): PixelFight,
+    new (params: PixelFightParams): PixelFight,
 }
 
 interface PixelFight {
@@ -15,5 +22,4 @@ interface PixelFight {
     step(): void;
     draw(): void;
     getCanvas(): HTMLCanvasElement;
-    getGameData(): PixelGameData;
 }

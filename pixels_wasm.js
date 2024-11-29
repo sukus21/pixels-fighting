@@ -1,7 +1,7 @@
 // @ts-check
 
 /**
- * @import { PixelFight, PixelGameData } from "./@types/pixelfight";
+ * @import { PixelFight, PixelFightParams, PixelGameData } from "./@types/pixelfight";
  * @import { PixelWasmExports } from "./@types/wasm_export";
  */
 
@@ -14,7 +14,7 @@ const wasmModule = await WebAssembly.compile(await wasmResponse.arrayBuffer());
  * @implements {PixelFight}
  */
 export default class PixelFightWASM {
-    /** @type {Faction[]} */ factions;
+    /** @type {PixelFightParams} */ params;
     
     /** @type {HTMLCanvasElement} */ canvas;
     /** @type {CanvasRenderingContext2D} */ context;
@@ -23,26 +23,23 @@ export default class PixelFightWASM {
 
     /** @type {() => void} */ reset;
     /** @type {() => void} */ draw;
-    /** @type {() => void} */ step;
 
     /**
-     * @param {Faction[]} factions
-     * @param {number} width
-     * @param {number} height
+     * @param {PixelFightParams} params
      */
-    constructor(factions, width, height) {
-        this.factions = factions;
+    constructor(params) {
+        this.params = params;
 
         // Create canvas
         this.canvas = document.createElement("canvas");
-        this.canvas.width = width;
-        this.canvas.height = height;
+        this.canvas.width = params.width;
+        this.canvas.height = params.height;
         const ctx = this.canvas.getContext("2d");
         if (!ctx) throw new Error("CanvasContext2D not available");
         this.context = ctx;
 
         // Create WASM instance
-        const image = new ImageData(width, height);
+        const image = new ImageData(params.width, params.height);
         const instance = new WebAssembly.Instance(wasmModule, {
             deps: {
                 atan2: Math.atan2,
@@ -60,16 +57,15 @@ export default class PixelFightWASM {
 
         // Initialize WASM runner
         this.instance = /** @type {PixelWasmExports} */ (instance.exports);
-        this.instance.init(width, height, factions.length);
+        this.instance.init(params.width, params.height, params.factions.length);
         this.memory = this.instance.memory.buffer;
-        for (let i = 0; i < factions.length; i++) {
-            this.instance.factionColor(i, factions[i].rgb);
-        }
+        params.factions.forEach((faction, i) => {
+            this.instance.factionColor(i, faction.rgb);
+        });
 
         // Point fight interface to WASM instance
         this.reset = this.instance.reset;
         this.draw = this.instance.draw;
-        this.step = this.instance.step;
 
         // Reset
         this.reset();
@@ -83,17 +79,19 @@ export default class PixelFightWASM {
     }
 
     /**
-     * @returns {PixelGameData}
+     * @returns {void}
      */
-    getGameData() {
-        const counts = new BigUint64Array(this.factions.length);
-        for (let i = 0; i < this.factions.length; i++) {
+    step() {
+        this.instance.step();
+
+        const counts = new BigUint64Array(this.params.factions.length);
+        for (let i = 0; i < this.params.factions.length; i++) {
             counts[i] = this.instance.getFactionCount(i);
         }
-        return {
+        this.params.updateGameData({
             iterations: this.instance.getIterations(),
-            factions: this.factions,
+            factions: this.params.factions,
             counts: counts,
-        };
+        });
     }
 }
