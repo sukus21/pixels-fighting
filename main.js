@@ -77,7 +77,7 @@ class GameSettings {
     /** @type {Faction[]} */ factions;
     /** @type {number} */ width = 128;
     /** @type {number} */ height = 128;
-    /** @type {string} */ mode = "gpu";
+    /** @type {string} */ mode = webGpuSupported ? "gpu" : "cpu";
     /** @type {boolean} */ play = true;
 
     constructor() {
