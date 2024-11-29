@@ -7,6 +7,8 @@
 import Faction, { FactionInfo, makeColor } from "./faction.js";
 import { templateCreate } from "./utils.js";
 
+try {
+
 const configWidth = /** @type {HTMLInputElement} */ (document.getElementById("config-width"));
 const configMode = /** @type {HTMLSelectElement} */ (document.getElementById("config-mode"));
 const configModeWebgpu = /** @type {HTMLOptionElement} */ (document.getElementById("config-mode-webgpu"));
@@ -483,4 +485,10 @@ if (settings.play) {
 if (!settings.play) {
     containerConfig.classList.remove("hidden");
     containerMain.classList.add("hidden");
+}
+
+} catch (e) {
+    const node = document.createElement('p');
+    node.innerText = String(e);
+    document.body.appendChild(node);
 }
