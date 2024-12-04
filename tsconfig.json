@@ -4,5 +4,6 @@
         "strict": true,
         "target": "ESNext",
         "module": "ESNext",
+        "noEmit": true,
     },
 }

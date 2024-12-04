@@ -235,6 +235,14 @@ class GameRunner {
         if (this.inited) return [];
         this.inited = true;
 
+        // Remove existing content
+        while (containerCounts.lastChild) containerCounts.lastChild.remove();
+        while (containerEvents.lastChild) containerEvents.lastChild.remove();
+        const oldCanvas = containerGame.querySelector("canvas");
+        if (oldCanvas) {
+            oldCanvas.remove();
+        }
+
         const results = new Array(this.settings.factions.length);
         this.settings.factions.forEach((faction, i) => {
             const element = /** @type {HTMLElement} */ (templateCount.cloneNode(true));
@@ -445,47 +453,68 @@ const fightConstructors = {
     "gpu": async () => (await import("./pixels_webgpu.js")).default,
 };
 
+/** @type {?GameRunner} */
+let gameRunner = null;
+
+function startGame() {
+    containerConfig.classList.add("hidden");
+    containerMain.classList.remove("hidden");
+    run(settings).then(() => {
+        settings.play = true;
+    });
+}
+
+function stopGame() {
+    if (gameRunner) gameRunner.stop();
+    containerConfig.classList.remove("hidden");
+    containerMain.classList.add("hidden");
+}
+
 /**
  * @param {GameSettings} settings
  * @returns {Promise<void>}
  */
 async function run(settings) {
-    // Check execution mode
-    if (!(settings.mode in fightConstructors)) throw new Error("invalid execution mode");
-    const constructor = await fightConstructors[settings.mode]();
+    if (!gameRunner) {
+        // Check execution mode
+        if (!(settings.mode in fightConstructors)) throw new Error("invalid execution mode");
+        const constructor = await fightConstructors[settings.mode]();
 
-    // Check factions
-    if (settings.factions.length < 2) throw new Error("need at least 2 factions to start");
-    settings.factions.forEach((faction) => {
-        faction.name ||= makeColor(faction.rgb);
-    });
+        // Check factions
+        if (settings.factions.length < 2) throw new Error("need at least 2 factions to start");
+        settings.factions.forEach((faction) => {
+            faction.name ||= makeColor(faction.rgb);
+        });
 
-    // Construct game and start running
-    const gameRunner = new GameRunner(settings, constructor);
+        // Construct game and start running
+        gameRunner = new GameRunner(settings, constructor);
+    }
+
     gameRunner.start();
 }
 
 // Add listener to run button
 configRunButton.addEventListener("click", () => {
     settings.apply();
-    let url = settings.createUrl(true);
-    window.location.search = url;
+    const url = new URL(window.location.href);
+    url.search = settings.createUrl(true);
+    window.history.pushState({play: true}, "", url);
+    
+    // Hide config
+    gameRunner = null;
+    startGame();
 });
 
-// Try running?
-if (settings.play) {
-    await run(settings);
-    settings.play = true;
+// Using the back and forward buttons in the browser
+window.addEventListener("popstate", (event) => {
+    if (event.state?.play) startGame();
+    else stopGame();
+});
 
-    containerConfig.classList.add("hidden");
-    containerMain.classList.remove("hidden");
-}
+// Either run or go to config
+if (settings.play) startGame();
+else stopGame();
 
-// Start the thing
-if (!settings.play) {
-    containerConfig.classList.remove("hidden");
-    containerMain.classList.add("hidden");
-}
 
 } catch (e) {
     const node = document.createElement('p');
