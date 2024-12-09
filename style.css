@@ -90,7 +90,6 @@ body {
         overflow-y: unset;
         max-height: unset;
     }
-
 }
 
 canvas {
@@ -195,9 +194,10 @@ td {
     margin-right: 15px;
     margin-bottom: 10px;
     border-right: solid lightgray 2px;
-}
-.info-count:not(.hidden) {
-    display: inline-block;
+
+    &:not(.hidden) {
+        display: inline-block;
+    }
 }
 
 .info-event {
@@ -225,7 +225,6 @@ button {
     padding-right: 10px;
     padding-left: 10px;
     background-color: white;
-    /* border: solid gray 2px ; */
     border: none;
     border-radius: 10px;
     color: white;

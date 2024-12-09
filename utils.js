@@ -8,8 +8,7 @@
  * @throws {Error} If the element with the specified ID is not found.
  */
 export function templateCreate(templateId) {
-    const element = /** @type {HTMLTemplateElement} */ document.getElementById(templateId);
-    if (!element) throw new Error("could not find element " + templateId);
+    const element = document.getElementById(templateId);
     if (!(element instanceof HTMLTemplateElement)) throw new Error("could not find template element " + templateId);
     return /** @type {HTMLElement} */ (element.content.children[0]);
 }
