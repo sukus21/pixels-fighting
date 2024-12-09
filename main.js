@@ -9,6 +9,8 @@ import { templateCreate } from "./utils.js";
 
 try {
 
+const topWindow = top ?? window;
+
 const configWidth = /** @type {HTMLInputElement} */ (document.getElementById("config-width"));
 const configMode = /** @type {HTMLSelectElement} */ (document.getElementById("config-mode"));
 const configModeWebgpu = /** @type {HTMLOptionElement} */ (document.getElementById("config-mode-webgpu"));
@@ -88,7 +90,7 @@ class GameSettings {
             new Faction("", Math.floor(Math.random() * 0x00FF_FFFF)),
         ];
 
-        const urlSearchParams = new URLSearchParams(window.location.search);
+        const urlSearchParams = new URLSearchParams(topWindow.location.search);
         this.load(urlSearchParams);
     }
 
@@ -496,9 +498,9 @@ async function run(settings) {
 // Add listener to run button
 configRunButton.addEventListener("click", () => {
     settings.apply();
-    const url = new URL(window.location.href);
+    const url = new URL(topWindow.location.href);
     url.search = settings.createUrl(true);
-    window.history.pushState({play: true}, "", url);
+    topWindow.history.pushState({play: true}, "", url);
     
     // Hide config
     gameRunner = null;
@@ -506,7 +508,7 @@ configRunButton.addEventListener("click", () => {
 });
 
 // Using the back and forward buttons in the browser
-window.addEventListener("popstate", (event) => {
+topWindow.addEventListener("popstate", (event) => {
     if (event.state?.play) startGame();
     else stopGame();
 });
