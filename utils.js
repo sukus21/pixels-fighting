@@ -10,6 +10,6 @@
 export function templateCreate(templateId) {
     const element = /** @type {HTMLTemplateElement} */ document.getElementById(templateId);
     if (!element) throw new Error("could not find element " + templateId);
-    if (!("content" in element)) throw new Error("element " + templateId + " does not have a content property");
-    return element.content.cloneNode(true).children[0];
+    if (!(element instanceof HTMLTemplateElement)) throw new Error("could not find template element " + templateId);
+    return /** @type {HTMLElement} */ (element.content.children[0]);
 }
