@@ -1,61 +1,94 @@
-h1, h2, h3, h4, h5, h6 {
-    font-family: Arial Black, Gadget, sans-serif;
-    margin-block-end: 0.2em;
+html {
+    font-family: Arial, "Helvetica Neue", Helvetica, sans-serif;
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
 }
 
-.hidden {
-    display: none;
+*, *::before, *::after {
+    box-sizing: border-box;
+}
+
+h1, h2, h3, h4, h5, h6 {
+    font-family: "Arial Black", Gadget, sans-serif;
+    margin-block-end: 0.2em;
 }
 
 #config {
     justify-self: center;
-    margin-left: 4em;
-    max-width: 100vw;
+    padding: 10px;
+    margin: 0 auto;
+
+    & select {
+        padding: 10px;
+        width: 100%;
+        border-radius: 10px;
+    }
 }
 
 body {
+    display: flex;
     margin: 0;
+    flex-direction: column;
+    padding: 0;
+    min-height: 100vh;
+    height: 100%;
+    max-height: 100vh;
+
+    &>* {
+        flex: 1;
+    }
+}
+
+#main {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    height: 100%;
+    justify-content: center;
+    align-items: center;
+    max-height: 100vh;
+    gap: 10px;
+    overflow: hidden;
+
 }
 
 #game {
-    width: calc(50vw - 5vh);
-    height: 90vh;
-    padding-left: 5vh;
-    padding-top: 5vh;
-    padding-bottom: 5vh;
-    float: left;
-    display: inline;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    justify-self: center;
+    padding: 20px;
+    max-height: 100vmin;
+    max-width: 100vmin;
+    flex: 1;
+    width: 100%;
+    height: 100%;
 }
 
 #info {
-    width: calc(50vw - 10vh);
-    height: 90vh;
-    float: right;
+    flex: 1;
     overflow-y: auto;
-    display: inline;
+    display: block;
+    align-self: start;
+    padding: 20px;
+    max-height: inherit;
 }
 
-@media (max-aspect-ratio: 4/5) {
+@media screen and (max-aspect-ratio: 4/5) {
     body {
-        margin: 0;
+        max-height: unset;
     }
 
-    #game {
-        width: 90vw;
-        height: auto;
-        padding-right: 5vw;
-        padding-left: 5vw;
-        padding-top: 5vw;
-        padding-bottom: 5vw;
-        float: none;
+    #main {
+        display: flex;
+        flex-direction: column;
+        max-height: unset;
     }
 
     #info {
-        width: 90vw;
-        height: auto;
-        margin: 5vw;
-        margin-top: 0;
-        float: none;
+        align-self: unset;
+        overflow-y: unset;
+        max-height: unset;
     }
 }
 
@@ -63,20 +96,22 @@ canvas {
     image-rendering: pixelated;
     width: 100%;
     height: 100%;
+    max-width: 50vmax;
     object-fit: contain;
 }
 
 #config-factions {
     margin-bottom: 30px;
+    width: 100%;
 }
 
 #config-run-button {
     background-color: rgb(40, 157, 40);
     color: white;
-}
 
-#config-run-button:hover {
-    background-color: rgb(34, 133, 34);
+    &:hover {
+        background-color: rgb(34, 133, 34);
+    }
 }
 
 .faction-cell {
@@ -94,24 +129,20 @@ canvas {
 
 .faction-name {
     height: 100%;
-    min-width: 30em;
+    width: 100%;
     background-color: white;
     border: 0;
     border-left: solid lightgray 2px;
     border-right: solid lightgray 2px;
     padding-left: 12px;
-    margin-left: 12px;
-    margin-right: 12px;
 }
 
 .faction-delete {
     background-color: rgb(184, 32, 32);
-    color: white;
 }
 
 #faction-add {
     background-color: rgb(15, 86, 173);
-    color: white;
 }
 
 .faction-button {
@@ -119,12 +150,39 @@ canvas {
     width: 100%;
 }
 
-td.small {
-    height: auto;
-}
+td {
+    &.small {
+        height: auto;
+    }
 
-td.smaller {
-    height: 20px;
+    &.smaller {
+        height: 20px;
+    }
+
+    &.info-color {
+        width: 65px;
+        min-width: 65px;
+        margin-right: 10px;
+        padding: 0;
+    }
+    
+    &.info-name {
+        font-weight: bold;
+        padding-left: 5px;
+        padding-right: 10px;
+        overflow-wrap: anywhere;
+    }
+    
+    &.info-text {
+        padding-left: 5px;
+    }
+    
+    &.info-timestamp {
+        font-style: italic;
+        text-align: right;
+        padding-right: 10px;
+        color: gray;
+    }
 }
 
 .info-counts {
@@ -136,9 +194,10 @@ td.smaller {
     margin-right: 15px;
     margin-bottom: 10px;
     border-right: solid lightgray 2px;
-}
-.info-count:not(.hidden) {
-    display: inline-block;
+
+    &:not(.hidden) {
+        display: inline-block;
+    }
 }
 
 .info-event {
@@ -146,31 +205,6 @@ td.smaller {
     width: 75%;
     padding-bottom: 8px;
     padding-top: 8px;
-}
-
-td.info-color {
-    width: 65px;
-    min-width: 65px;
-    margin-right: 10px;
-    padding: 0;
-}
-
-td.info-name {
-    font-weight: bold;
-    padding-left: 5px;
-    padding-right: 10px;
-    overflow-wrap: anywhere;
-}
-
-td.info-text {
-    padding-left: 5px;
-}
-
-td.info-timestamp {
-    font-style: italic;
-    text-align: right;
-    padding-right: 10px;
-    color: gray;
 }
 
 #info-stats {
@@ -191,18 +225,24 @@ button {
     padding-right: 10px;
     padding-left: 10px;
     background-color: white;
-    border: solid gray 2px ;
-}
+    border: none;
+    border-radius: 10px;
+    color: white;
+    box-shadow: 1px 1px 2px 1px rgba(0, 0, 0, 0.2);
 
-button:hover {
-    cursor: pointer;
-    background-color: lightgray;
+    &:hover {
+        cursor: pointer;
+    }
 }
 
 input[type="color"] {
     background-color: white;
+
+    &:hover {
+        cursor: pointer;
+    }
 }
 
-input[type="color"]:hover {
-    cursor: pointer;
+.hidden {
+    display: none !important;
 }
