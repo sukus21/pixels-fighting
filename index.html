@@ -7,6 +7,54 @@
 	</head>
 
 	<body>
+        <!-- UI Templates -->
+        <template id="faction-template">
+
+            <tr class="faction-entry">
+                <td class="color-picker faction-cell">
+                    <input type="color" class="faction-color" name="faction color">
+                </td>
+                <td class="faction-cell">
+                    <input type="text" class="faction-name" placeholder="Enter name here..." name="faction name">
+                </td>
+                <td class="faction-cell">
+                    <button class="faction-button faction-delete" name="delete faction">
+                        Remove
+                    </button>
+                </td>
+            </tr>
+
+        </template>
+
+        <template id="info-count-template">
+
+            <table class="info-count">
+                <tr>
+                    <td class="smaller info-color" rowspan="2" style="background-color: aqua;"></td>
+                    <td class="smaller info-name"></td>
+                </tr>
+                <tr>
+                    <td class="small info-text"></td>
+                </tr>
+            </table>
+
+        </template>
+
+        <template id="info-event-template">
+
+            <table class="info-event">
+                <tr>
+                    <td class="smaller info-color" rowspan="2" style="background-color: aqua;"></td>
+                    <td class="smaller info-name"></td>
+                    <td class="smaller info-timestamp"></td>
+                </tr>
+                <tr>
+                    <td class="small info-text" colspan="2"></td>
+                </tr>
+            </table>
+
+        </template>
+
         <!-- Game configuration -->
         <div id="config" class="hidden">
             <h1>Pixels Fighting! setup</h1>
@@ -40,19 +88,6 @@
                         <th>Color</th>
                         <th>Name</th>
                         <th></th>
-                    </tr>
-                    <tr id="faction-template" class="faction-entry hidden">
-                        <td class="color-picker faction-cell">
-                            <input type="color" class="faction-color" name="faction color">
-                        </td>
-                        <td class="faction-cell">
-                            <input type="text" class="faction-name" placeholder="Enter name here..." name="faction name">
-                        </td>
-                        <td class="faction-cell">
-                            <button class="faction-button faction-delete" name="delete faction">
-                                Remove
-                            </button>
-                        </td>
                     </tr>
                 </thead>
                 <tbody id="faction-container"></tbody>
@@ -113,29 +148,10 @@
 
                 <h1>Current scores</h1>
                 <div id="info-counts">
-                    <table id="info-count-template" class="info-count hidden">
-                        <tr>
-                            <td class="smaller info-color" rowspan="2" style="background-color: aqua;"></td>
-                            <td class="smaller info-name"></td>
-                        </tr>
-                        <tr>
-                            <td class="small info-text"></td>
-                        </tr>
-                    </table>
                 </div>
 
                 <h1>Game events</h1>
                 <div id="info-events">
-                    <table id="info-event-template" class="info-event hidden">
-                        <tr>
-                            <td class="smaller info-color" rowspan="2" style="background-color: aqua;"></td>
-                            <td class="smaller info-name"></td>
-                            <td class="smaller info-timestamp"></td>
-                        </tr>
-                        <tr>
-                            <td class="small info-text" colspan="2"></td>
-                        </tr>
-                    </table>
                 </div>
             </div>
         </div>
