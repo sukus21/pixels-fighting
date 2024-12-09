@@ -1,0 +1,25 @@
+{
+    "ip": "localhost:80",
+    "message_break_interval": 1000,
+    "auto_index": "index.html",
+    "auto_extension": "html",
+    "allow_dir_listing": true,
+    "mime_types": {
+        "css": "text/css",
+        "html": "text/html",
+        "js": "text/javascript",
+        "json": "application/json",
+        "wasm": "application/wasm"
+    },
+    "allowed_hosts": [
+        "localhost",
+        "127.0.0.1"
+    ],
+    "response_messages": {
+        "200": true,
+        "401": true,
+        "403": true,
+        "404": true,
+        "500": true
+    }
+}

@@ -1,4 +1,5 @@
 import Faction from "../faction.js";
+import { ImagePopulator } from "./settings.js";
 
 type PixelGameData = {
     iterations: bigint,
@@ -11,6 +12,7 @@ type PixelFightParams = {
     width: number,
     height: number,
     updateGameData: (gameData: PixelGameData) => void,
+    populator: ImagePopulator,
 };
 
 type PixelFightConstructor = {

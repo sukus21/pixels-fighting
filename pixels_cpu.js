@@ -2,6 +2,7 @@
 
 /**
  * @import { PixelFight, PixelFightParams, PixelGameData } from "./@types/pixelfight";
+ * @import { ImagePopulator, PixelCoordinateInfo } from "./@types/settings";
  */
 
 import Faction from "./faction.js";
@@ -37,8 +38,8 @@ export default class PixelFightCPU {
         this.bufferA = new Array(this.params.width);
         this.bufferB = new Array(this.params.width);
         this.buffers = [this.bufferA, this.bufferB];
-        for (let i = 0; i < this.params.height; i++) {
-            this.bufferA[i] = new Uint32Array(this.params.width);
+        for (let i = 0; i < this.params.width; i++) {
+            this.bufferA[i] = new Uint32Array(this.params.height);
             this.bufferB[i] = new Uint32Array(this.params.height);
         }
 
@@ -55,11 +56,29 @@ export default class PixelFightCPU {
         this.count.fill(0n, 0, this.params.factions.length);
 
         // "Evenly" distrubute pixels to each side
+        /** @type {PixelCoordinateInfo} */
+        const pixelInfo = {
+            x: 0,
+            y: 0,
+            u: 0.0,
+            v: 0.0,
+            index: 0.0,
+            factions: this.params.factions,
+        };
         for (let i = 0; i < this.params.width; i++) {
             for (let j = 0; j < this.params.height; j++) {
+                pixelInfo.x = i;
+                pixelInfo.y = j;
+                pixelInfo.u = i / (this.params.width - 1);
+                pixelInfo.v = j / (this.params.height - 1);
+                pixelInfo.index = i + j * this.params.width;
+                const owner = this.params.populator(pixelInfo);
+
+                /*
                 let angle = Math.atan2(this.params.width/2 - i - 0.5, this.params.height/2 - j - 0.5) * 180 / Math.PI;
                 while (angle < 0) angle += 360;
                 const owner = Math.floor((360 - angle) / (360 / this.params.factions.length));
+                */
                 this.bufferA[i][j] = owner;
                 this.bufferB[i][j] = owner;
                 this.count[owner]++;

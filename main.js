@@ -2,6 +2,7 @@
 
 /**
  * @import { PixelFight, PixelFightConstructor, PixelGameData } from "./@types/pixelfight";
+ * @import { ImagePopulator, PixelCoordinateInfo } from "./@types/settings";
  */
 
 import Faction, { FactionInfo, makeColor } from "./faction.js";
@@ -75,12 +76,23 @@ function addFaction(name = "", color = null) {
 // Add faction button
 factionAdd.addEventListener("click", () => addFaction());
 
+/** @type {ImagePopulator} */
+const randomPopulator = (pixel) => {
+    return Math.floor(Math.random() * pixel.factions.length);
+};
+
+/** @type {?number} */
+let forcedHeight = null;
+/** @type {?number} */
+let forcedWidth = null;
+
 class GameSettings {
     /** @type {Faction[]} */ factions;
     /** @type {number} */ width = 128;
     /** @type {number} */ height = 128;
     /** @type {string} */ mode = webGpuSupported ? "gpu" : "cpu";
     /** @type {boolean} */ play = true;
+    /** @type {ImagePopulator} */ populator = randomPopulator;
 
     constructor() {
         this.factions = [
@@ -170,8 +182,8 @@ class GameSettings {
             factions[i] = new Faction(factionName.value, color);
         });
 
-        this.width = Number(configWidth.value);
-        this.height = this.width;
+        this.width = forcedWidth ?? Number(configWidth.value);
+        this.height = forcedHeight ?? this.width;
         this.mode = configMode.value;
         this.factions = factions;
     }
@@ -221,6 +233,7 @@ class GameRunner {
             width: settings.width,
             height: settings.height,
             updateGameData: this.updateGameData,
+            populator: settings.populator,
         });
 
         this.alive = settings.factions.length;
@@ -514,6 +527,56 @@ window.addEventListener("popstate", (event) => {
 // Either run or go to config
 if (settings.play) startGame();
 else stopGame();
+
+
+const fileSelect = /** @type {HTMLInputElement} */ (document.querySelector("#fileinput"));
+fileSelect.addEventListener("change", (event) => {
+    const fileReader = new FileReader();
+    const img = new Image();
+
+    fileReader.readAsDataURL(event.target.files[0]);
+    fileReader.addEventListener("load", () => {
+        img.addEventListener("load", () => {
+            const canvas = document.createElement("canvas");
+            const ctx = canvas.getContext("2d");
+            if (!ctx) throw new Error("CanvasContext2D not available");
+            ctx.drawImage(img, 0, 0);
+            const imageData = ctx.getImageData(0, 0, img.width, img.height).data;
+            const factionBuffer = new Uint32Array(img.width * img.height);
+
+            // Loop de loop
+            /** @type {number[]} */
+            const knownColors = [];
+            for (let i = 0; i < imageData.length; i += 4) {
+                const color = (imageData[i+0] << 16) + (imageData[i+1] << 8) + (imageData[i+2] << 0);
+                let factionIdx = knownColors.indexOf(color);
+                if (factionIdx === -1) {
+                    factionIdx = knownColors.length;
+                    knownColors.push(color);
+                }
+
+                factionBuffer[i/4] = factionIdx;
+            }
+
+            // Now we have the factions
+            document.querySelectorAll(".faction-entry").forEach((element) => {
+                element.remove();
+            });
+            let idx = 0;
+            for (const bruh of knownColors) {
+                addFaction((idx++) + "", bruh);
+            }
+
+            forcedWidth = img.width;
+            forcedHeight = img.height;
+            settings.populator = (pixel) => {
+                return factionBuffer[pixel.index];
+            };
+        });
+
+        img.src = fileReader.result;
+    });
+});
 
 
 } catch (e) {
